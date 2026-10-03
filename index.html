@@ -9,14 +9,18 @@
 <style>
   :root{
     --ink:#1B2A3D;
-    --ink-soft:#5B6B7C;
+    /* darkened from #5B6B7C: the original sat at 4.23:1 on the paper base,
+       which fails WCAG AA for the small text it is used on */
+    --ink-soft:#4A5768;
     --paper:#EAE2CC;
     --paper-deep:#DED2B0;
     --card:#F7F2E4;
     --brass:#A87C2C;
-    --brass-deep:#8A6520;
     --rust:#9C3B2E;
     --line: rgba(27,42,61,0.16);
+    /* darkened from #8A6520, which measured 4.10:1 on paper and failed AA on
+       the small tab-count text */
+    --brass-deep:#6F4E14;
 
     /* ---- glass surface tokens (ported from RACK's data-style="glass") ----
        Opacities are a little higher than RACK's 52%: this app is text-dense
@@ -221,6 +225,8 @@
   .dirty-dot{ width:7px; height:7px; border-radius:50%; background:var(--rust); display:inline-block; margin-right:6px; vertical-align:middle; }
 
   .layout{ max-width:1080px; margin:0 auto; padding:28px; }
+  /* the warning lives inside .layout so it shares the grid's exact width and
+     gutters; only the block spacing is trimmed */
 
   .catrow{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:26px; align-items:center; }
   .cattab{
@@ -250,15 +256,27 @@
   }
   .addcat:hover{ border-color:var(--brass); color:var(--brass-deep); }
 
-  .entrybar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .entrybar{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:14px; }
   .entrybar .catname{ font-size:22px; }
   .entrybar .catmeta{ font-size:12.5px; color:var(--ink-soft); }
+  .entrybar .addzone{ display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
+  /* Explains the blur instead of leaving it looking like a rendering failure,
+     and keeps the primary action from being the heaviest thing on the page. */
+  .entrybar .hoverhint{ font-size:11px; color:var(--ink-soft); letter-spacing:0.02em; }
 
   .grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    /* auto-fit, not auto-fill: with auto-fill a single card leaves empty tracks
+       and the row only occupies the left third of a wide screen. auto-fit
+       collapses the empty tracks so the card fills the available width. */
+    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
     gap:16px;
+    /* stretch, not start: cards in a row share a height so their action rows
+       align. .card uses margin-top:auto on .actions to sit at the bottom. */
   }
+  /* flex column so the action row can be pushed to the bottom: cards in a row
+     then share the row height and their Edit/Delete buttons line up, instead of
+     floating mid-card on the shorter ones */
   .card{
     /* translucent but un-blurred, following RACK: many cards per screen stay
        fast, and the field values stay crisp to read */
@@ -269,7 +287,13 @@
     position:relative;
     box-shadow: var(--glass-shadow);
     transition:box-shadow .15s, transform .15s;
+    display:flex; flex-direction:column;
+    /* auto-fit would otherwise stretch a lone card across the full 1080px
+       layout, which looks worse than the empty space did */
+    max-width:560px;
+    width:100%;
   }
+  .card .actions{ margin-top:auto; }
   .card:hover{ box-shadow:0 10px 24px -16px rgba(27,42,61,0.4), inset 0 1px 0 rgba(255,255,255,0.55); }
   .stamp{
     position:absolute; top:14px; right:14px;
@@ -289,10 +313,8 @@
   .kv{ margin-bottom:8px; }
   .kv .k{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--ink-soft); }
 
-  /* Field values stay blurred until the card is hovered, focused, or values are
-     globally revealed. These are the sensitive numbers the vault exists to
-     hold, so they should not be readable at a glance or on a screen share.
-     Layout is unaffected by the blur, so nothing shifts on reveal. */
+  /* An unblurred value keeps its size, so the blurred and revealed states are the
+     same width — no layout shift on hover. */
   .kv .v{
     font-family:'IBM Plex Mono', monospace; font-size:14.5px; word-break:break-word;
     filter: blur(5px);
@@ -311,6 +333,21 @@
   }
   @media (prefers-reduced-motion: reduce){
     .kv .v{ transition:none; }
+  }
+
+  /* A blurred value is otherwise indistinguishable from a failed load or a
+     rendering bug. This pip marks that there IS a value here, hidden. The
+     entry-bar hint carries the "hover to read" instruction, so the pip stays
+     minimal and does not repeat it on every row. */
+  .kv{ position:relative; }
+  .card:hover .kv .pip,
+  .card:focus-within .kv .pip,
+  body.reveal-all .kv .pip{ opacity:0; }
+  .kv .pip{
+    position:absolute; top:1px; right:0;
+    width:5px; height:5px; border-radius:50%;
+    background:var(--brass); opacity:0.75;
+    pointer-events:none; transition:opacity .16s ease;
   }
 
   /* images */
@@ -354,23 +391,35 @@
     padding:5px 10px; font-size:12px; color:var(--rust); flex:0 0 auto; }
   .imgrow button:hover{ border-color:var(--rust); }
 
-  /* category delete affordance */
-  .cattab .delcat{
-    background:none; border:none; color:var(--ink-soft); font-size:15px; line-height:1;
-    padding:0 0 0 7px; margin-left:2px; opacity:0; transition:opacity .15s;
+  /* Category delete. Deliberately NOT a bare x inside the tab button: it sits
+     within the tab's own click target, so a stray click while switching
+     categories would destroy a category and every record in it. It is now a
+     separate, clearly separated control that only appears on hover/focus, and
+     activating it never also switches tabs. */
+  .catdel{
+    background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft);
+    font-size:11.5px; padding:9px 13px; border-radius:6px; margin-left:4px;
+    opacity:0; transition:opacity .15s, border-color .15s, color .15s;
+    white-space:nowrap;
   }
-  .cattab:hover .delcat, .cattab.active .delcat{ opacity:1; }
-  .cattab .delcat:hover{ color:var(--rust); }
-  .cattab .delcat:focus-visible{ opacity:1; outline:2px solid var(--rust); outline-offset:1px; }
+  .catrow:hover .catdel, .catdel:focus-visible{ opacity:1; }
+  .catdel:hover{ border-color:var(--rust); color:var(--rust); border-style:solid; }
+  .catdel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; opacity:1; }
 
   .card .notes{ font-size:12.5px; color:var(--ink-soft); margin-top:10px; padding-top:10px; border-top:1px solid var(--glass-border); font-style:italic; }
-  .card .actions{ display:flex; gap:8px; margin-top:14px; }
+  /* margin-top:auto is set with .card above; a fixed value here would override
+     it and leave action rows floating mid-card on shorter cards */
+  .card .actions{ display:flex; gap:8px; padding-top:14px; }
   .card .actions button{
     flex:1; font-size:12px; padding:7px; border-radius:2px;
     border:1px solid var(--glass-border); background:var(--glass-bg);
+    color:var(--ink);
   }
   .card .actions button:hover{ border-color:var(--brass); }
-  .card .actions .del:hover{ border-color:var(--rust); color:var(--rust); }
+  /* Destructive, so it is tinted at rest rather than only on hover — but far
+     too quietly to be mistaken for the safe "Edit" beside it. */
+  .card .actions .del{ color:var(--rust); border-color:color-mix(in srgb, var(--rust) 34%, transparent); }
+  .card .actions .del:hover{ background:var(--rust); border-color:var(--rust); color:#fff; }
 
   .empty{
     text-align:center; padding:60px 20px; color:var(--ink-soft);
@@ -410,7 +459,21 @@
   .modalfoot{ display:flex; gap:10px; margin-top:22px; }
   .modalfoot .btn{ width:auto; flex:1; }
 
-  footer.note{ text-align:center; color:var(--ink-soft); font-size:12px; padding:30px 20px 40px; }
+  /* Was ink-soft at 12px, which measured 1.35:1 against the page background —
+   effectively invisible, and it carries the no-recovery warning. Now a bordered
+   notice at full ink contrast. */
+  footer.note{
+    /* lives inside .layout, so it inherits the grid's width and gutters exactly;
+       only the block spacing is trimmed */
+    display:flex; align-items:flex-start; gap:9px;
+    text-align:left; color:var(--ink); font-size:12.5px; line-height:1.55;
+    padding:12px 16px; margin:22px 0 12px;
+    border:1px solid var(--glass-border); border-left:3px solid var(--brass);
+    border-radius:3px; background:var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+  }
+  footer.note svg{ width:15px; height:15px; flex:0 0 auto; margin-top:2px; fill:var(--brass-deep); }
 
   @media (max-width:600px){
     .topbar{ padding:14px 16px; }
@@ -506,13 +569,19 @@
         <div class="catname display" id="activeCatName">Vehicles</div>
         <div class="catmeta" id="activeCatMeta"></div>
       </div>
-      <button class="btn btn-sm" id="btnAddEntry" style="width:auto;">+ Add record</button>
+      <div class="addzone">
+        <button class="btn btn-sm" id="btnAddEntry" style="width:auto;">+ Add record</button>
+        <span class="hoverhint">Values are hidden — hover a card to read them</span>
+      </div>
     </div>
 
     <div id="entriesGrid" class="grid"></div>
-  </div>
 
-  <footer class="note">Vault saved locally as an encrypted file. Keep a backup copy somewhere safe — a lost file with a forgotten password cannot be recovered.</footer>
+    <footer class="note">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+      <span><strong>No password recovery.</strong> This vault is a single encrypted file on your own device, and the password is the only key. Keep a backup copy of the <span class="mono">.vault</span> file somewhere safe &mdash; a lost file with a forgotten password cannot be recovered by anyone, including you.</span>
+    </footer>
+  </div>
 </div>
 
 <!-- ===================== ENTRY MODAL ===================== -->
@@ -860,33 +929,31 @@
 
   // ---------------- Categories ----------------
   function renderCategories(){
-    const row = $("catRow");
-    row.innerHTML = "";
-    vault.categories.forEach(cat => {
-      const count = vault.entries.filter(e => e.categoryId === cat.id).length;
-      const btn = document.createElement("button");
-      btn.className = "cattab" + (cat.id === activeCategoryId ? " active" : "");
-      // name and count are built as text nodes, never interpolated into HTML
-      btn.appendChild(document.createTextNode(cat.name + " "));
-      const cnt = document.createElement("span");
-      cnt.className = "count"; cnt.textContent = count;
-      btn.appendChild(cnt);
+      const row = $("catRow");
+      row.innerHTML = "";
+      vault.categories.forEach(cat => {
+        const count = vault.entries.filter(e => e.categoryId === cat.id).length;
+        const btn = document.createElement("button");
+        btn.className = "cattab" + (cat.id === activeCategoryId ? " active" : "");
+        // name and count are built as text nodes, never interpolated into HTML
+        btn.appendChild(document.createTextNode(cat.name + " "));
+        const cnt = document.createElement("span");
+        cnt.className = "count"; cnt.textContent = count;
+        btn.appendChild(cnt);
+        btn.onclick = () => { activeCategoryId = cat.id; renderCategories(); renderEntries(); };
+        row.appendChild(btn);
 
-      const del = document.createElement("span");
-      del.className = "delcat";
-      del.textContent = "\u00d7";
-      del.title = "Delete category \"" + cat.name + "\"";
-      del.setAttribute("role", "button");
-      del.setAttribute("tabindex", "0");
-      del.setAttribute("aria-label", "Delete category " + cat.name);
-      const doDelete = (ev) => { ev.stopPropagation(); deleteCategory(cat.id); };
-      del.onclick = doDelete;
-      del.onkeydown = (ev) => { if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); doDelete(ev); } };
-      btn.appendChild(del);
-
-      btn.onclick = () => { activeCategoryId = cat.id; renderCategories(); renderEntries(); };
-      row.appendChild(btn);
-    });
+        // delete is a sibling of the tab, not a child, so clicking it can never
+        // also register as "switch to this category"
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "catdel";
+        del.textContent = "Delete";
+        del.title = 'Delete the category "' + cat.name + '"' + (count ? " and its " + count + (count === 1 ? " record" : " records") : "");
+        del.setAttribute("aria-label", 'Delete category ' + cat.name + (count ? ' and its ' + count + (count === 1 ? ' record' : ' records') : ''));
+        del.onclick = () => deleteCategory(cat.id);
+        row.appendChild(del);
+      });
     const addBtn = document.createElement("button");
     addBtn.className = "addcat";
     addBtn.textContent = "+ New category";
@@ -952,18 +1019,22 @@
       let fieldsHtml = "";
       entry.fields.forEach(f => {
         if(!f.k && !f.v) return;
-        fieldsHtml += '<div class="kv"><div class="k">'+escapeHtml(f.k)+'</div><div class="v">'+escapeHtml(f.v)+'</div></div>';
+        fieldsHtml += '<div class="kv"><div class="k">'+escapeHtml(f.k)+'</div><div class="v">'+escapeHtml(f.v)+'</div>' +
+                      (f.v ? '<span class="pip" aria-hidden="true"></span>' : '') + '</div>';
       });
+      // marker where the photo strip belongs: after the fields, before the notes
+      const imgs = entry.images || [];
       card.innerHTML =
         '<div class="stamp">No.<br>'+stampNo+'</div>' +
         '<h3>'+escapeHtml(entry.title || "Untitled")+'</h3>' +
         fieldsHtml +
+        (imgs.length ? '<div class="thumbslot"></div>' : '') +
         (entry.notes ? '<div class="notes">'+escapeHtml(entry.notes)+'</div>' : '') +
         '<div class="actions"><button class="edit">Edit</button><button class="del">Delete</button></div>';
 
-      // thumbnails appended as elements so base64 data never passes through HTML
-      const imgs = entry.images || [];
+      // thumbnails are built as elements so base64 data never passes through HTML
       if(imgs.length){
+        const slot = card.querySelector(".thumbslot");
         const strip = document.createElement("div");
         strip.className = "thumbs";
         imgs.forEach((rec, i) => {
@@ -978,7 +1049,7 @@
           t.onclick = () => openLightbox(entry, i);
           strip.appendChild(t);
         });
-        card.appendChild(strip);
+        slot.replaceWith(strip);
       }
 
       card.querySelector(".edit").onclick = () => openEntryModal(entry.id);
