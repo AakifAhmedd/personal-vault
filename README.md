@@ -38,18 +38,57 @@ back to opaque via `@supports`.
 1. **Start a new vault** — give it a name and set a password (minimum 8 characters).
    A new vault begins with two categories: *Vehicles* and *IDs & Licenses*.
 2. **Add a category** — click *+ New category* for anything else you track
-   (warranties, appliances, subscriptions, property, accounts).
+   (warranties, appliances, subscriptions, property, accounts). The `×` on a tab
+   deletes that category **and every record in it**, so the confirmation states
+   the record count first. There is no undo.
 3. **Add a record** — a title plus any number of custom fields. Fields are
    key/value pairs, so the same record type can hold anything. The two built-in
    categories pre-fill sensible fields (VIN, licence plate, insurance policy for
    vehicles; document number, issued, expires for IDs).
-4. **Save vault file** — writes an encrypted `.vault` file. If your browser
+4. **Attach photos** — in the record modal, add images of the document itself.
+   See [Images](#images) below for what happens to them.
+5. **Save vault file** — writes an encrypted `.vault` file. If your browser
    supports the File System Access API (Chrome, Edge, other Chromium browsers),
    it saves back to the same file you chose; otherwise it downloads a new copy.
-5. **Open an existing vault** — pick the `.vault` file and enter its password.
+6. **Open an existing vault** — pick the `.vault` file and enter its password.
 
 The *Unsaved changes* dot in the header, plus the browser's own beforeunload
 warning, are the only guards against losing edits.
+
+## Reading values
+
+**Field values and thumbnails are blurred until you hover or focus the card.**
+This is deliberate: these are the sensitive numbers the vault exists to hold, and
+the default view should not expose them to a passer-by, a screen share, or a
+photo of your monitor.
+
+- Hover a card, or tab to it, to reveal that card.
+- **Reveal values** in the header clears the blur everywhere, for when you are
+  deliberately reading the vault.
+- Locking re-blurs everything, so nothing stays readable after you walk away.
+
+Blur is a display convenience, not a security boundary — the values are in the
+page's memory while unlocked, exactly as before. It protects against casual
+exposure, not against someone using developer tools on an unlocked session.
+
+## Images
+
+Photos can be attached to any record — a licence, a passport page, a policy
+document — and are stored **inside the same encrypted envelope as the text**, so
+a photo is protected exactly like a VIN.
+
+They are downscaled on import to a maximum of 1600px on the long edge and
+re-encoded as JPEG at quality 0.8. Two consequences worth knowing:
+
+- **Size.** A typical 4 MB phone photo becomes roughly 200–400 KB, so a vault
+  with twenty photos stays around 6 MB rather than 100 MB. Saves stay fast.
+- **EXIF is stripped.** Because the pixels are re-encoded, location and device
+  metadata are discarded. Phone photos of identity documents frequently carry
+  GPS coordinates; those do not survive into the vault.
+
+The original file is never stored or modified — only the downscaled copy goes
+in. Images appear as blurred thumbnails on the card; click one to open it
+full-size, and press Escape or click outside to close.
 
 ## How the encryption works
 
@@ -93,6 +132,11 @@ that choice:
   password, and prefer the `github.io` URL over anything you did not get from
   this repository.
 - Entries are per-category and flat; there is no nesting, search, or tagging.
+- Images make the vault meaningfully bigger than a text-only one. A forgotten
+  password now also means losing photographs you may not have backed up
+  elsewhere, so keep the backup copy current if you use them.
+- Blur is presentation only. It does not encrypt anything on its own and can be
+  bypassed from developer tools while the vault is unlocked.
 
 ## Files
 

@@ -288,7 +288,81 @@
   .card h3{ font-size:17px; margin:0 22px 12px 0; padding-right:40px; }
   .kv{ margin-bottom:8px; }
   .kv .k{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--ink-soft); }
-  .kv .v{ font-family:'IBM Plex Mono', monospace; font-size:14.5px; word-break:break-word; }
+
+  /* Field values stay blurred until the card is hovered, focused, or values are
+     globally revealed. These are the sensitive numbers the vault exists to
+     hold, so they should not be readable at a glance or on a screen share.
+     Layout is unaffected by the blur, so nothing shifts on reveal. */
+  .kv .v{
+    font-family:'IBM Plex Mono', monospace; font-size:14.5px; word-break:break-word;
+    filter: blur(5px);
+    transition: filter .16s ease;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .card:hover .kv .v,
+  .card:focus-within .kv .v,
+  body.reveal-all .kv .v{
+    filter:none;
+    cursor:text;
+    user-select:auto;
+    -webkit-user-select:auto;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .kv .v{ transition:none; }
+  }
+
+  /* images */
+  .thumbs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  .thumb{
+    width:72px; height:72px; border-radius:3px; overflow:hidden; cursor:zoom-in;
+    border:1px solid var(--glass-border); background:var(--paper-deep);
+    flex:0 0 auto;
+    position:relative;
+  }
+  /* Thumbnails are blurred on the same terms as the values: a legible photo of a
+     licence beside a blurred field would give the whole thing away. */
+  .thumb img{
+    width:100%; height:100%; object-fit:cover; display:block;
+    filter: blur(7px); transition: filter .16s ease;
+  }
+  .card:hover .thumb img,
+  .card:focus-within .thumb img,
+  body.reveal-all .thumb img{ filter:none; }
+  .thumb::after{
+    content:""; position:absolute; inset:0;
+    background:rgba(27,42,61,0.06); border-radius:3px; pointer-events:none;
+    transition:background .16s ease;
+  }
+  .card:hover .thumb::after,
+  .card:focus-within .thumb::after,
+  body.reveal-all .thumb::after{ background:transparent; }
+  .thumb:hover{ border-color:var(--brass); }
+  @media (prefers-reduced-motion: reduce){
+    .thumb img{ transition:none; }
+  }
+
+  .imgrow{
+    display:flex; align-items:center; gap:10px; padding:7px 0;
+    border-bottom:1px solid var(--glass-border);
+  }
+  .imgrow:last-child{ border-bottom:none; }
+  .imgrow .name{ flex:1; font-size:13px; word-break:break-all; }
+  .imgrow .dims{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
+  .imgrow button{ background:none; border:1px solid var(--glass-border); border-radius:2px;
+    padding:5px 10px; font-size:12px; color:var(--rust); flex:0 0 auto; }
+  .imgrow button:hover{ border-color:var(--rust); }
+
+  /* category delete affordance */
+  .cattab .delcat{
+    background:none; border:none; color:var(--ink-soft); font-size:15px; line-height:1;
+    padding:0 0 0 7px; margin-left:2px; opacity:0; transition:opacity .15s;
+  }
+  .cattab:hover .delcat, .cattab.active .delcat{ opacity:1; }
+  .cattab .delcat:hover{ color:var(--rust); }
+  .cattab .delcat:focus-visible{ opacity:1; outline:2px solid var(--rust); outline-offset:1px; }
+
   .card .notes{ font-size:12.5px; color:var(--ink-soft); margin-top:10px; padding-top:10px; border-top:1px solid var(--glass-border); font-style:italic; }
   .card .actions{ display:flex; gap:8px; margin-top:14px; }
   .card .actions button{
@@ -418,6 +492,7 @@
     </div>
     <div class="topactions">
       <span id="dirtyLabel" style="font-size:12.5px; color:#C9AF7A; display:none;"><span class="dirty-dot"></span>Unsaved changes</span>
+      <button id="btnReveal" aria-pressed="false" title="Show or hide all field values">Reveal values</button>
       <button class="save-btn" id="btnSave">Save vault file</button>
       <button id="btnLock">Lock</button>
     </div>
@@ -455,9 +530,25 @@
       <label for="entryNotes">Notes (optional)</label>
       <textarea id="entryNotes" placeholder="Anything worth remembering"></textarea>
     </div>
+    <label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:8px;">Images</label>
+    <div id="imageList"></div>
+    <div class="filepick" id="imagePickArea">+ Add a photo of the document</div>
+    <input type="file" id="imageInput" accept="image/*" multiple style="display:none;">
+    <p class="hint" id="imageHint" style="text-align:left;margin:8px 0 0;">Photos are shrunk to 1600px and stored inside the encrypted vault. Originals stay on your device.</p>
     <div class="modalfoot">
       <button class="btn btn-outline" id="btnCancelEntry">Cancel</button>
       <button class="btn" id="btnSaveEntry">Save record</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== IMAGE LIGHTBOX ===================== -->
+<div class="overlay" id="lightbox" style="z-index:60;">
+  <div class="modal" style="max-width:min(94vw,1000px); text-align:center;">
+    <div id="lightboxTitle" style="font-size:13px; color:var(--ink-soft); margin-bottom:12px;"></div>
+    <img id="lightboxImg" alt="" style="max-width:100%; max-height:74vh; display:block; margin:0 auto; border-radius:3px;">
+    <div class="modalfoot">
+      <button class="btn btn-outline" id="btnCloseLightbox">Close</button>
     </div>
   </div>
 </div>
@@ -670,6 +761,17 @@
     window.__vaultPassword = null;
     fileHandle = null;
     pendingOpenFileText = null;
+    pendingImages = [];
+    releaseUrls();
+    // values go back to blurred, and the lightbox closes, so nothing sensitive
+    // is left readable on screen after locking
+    revealAll = false;
+    document.body.classList.remove("reveal-all");
+    $("btnReveal").textContent = "Reveal values";
+    $("btnReveal").setAttribute("aria-pressed", "false");
+    $("btnReveal").classList.remove("save-btn");
+    closeLightbox();
+    $("imageList").innerHTML = "";
     document.getElementById("app").style.display = "none";
     document.getElementById("lockScreen").style.display = "flex";
     $("chooserView").style.display = "block";
@@ -684,6 +786,78 @@
     if(isDirty){ e.preventDefault(); e.returnValue = ""; }
   });
 
+  // ---------------- Images ----------------
+  // Stored as {id, name, mime, w, h, data} where data is base64 of the
+  // downscaled JPEG. They live inside the same AES-GCM envelope as the text,
+  // so a photo is encrypted exactly like a VIN. Bytes are never written
+  // anywhere outside the vault file.
+  const MAX_DIM = 1600;
+  const JPEG_Q = 0.8;
+  let objectUrls = [];   // blob URLs handed out for <img>, revoked on re-render
+
+  function trackUrl(u){ objectUrls.push(u); return u; }
+  function releaseUrls(){
+    objectUrls.forEach(u => { try{ URL.revokeObjectURL(u); }catch(e){} });
+    objectUrls = [];
+  }
+
+  // Downscale through a canvas: max dimension 1600px, JPEG 0.8. This also
+  // strips EXIF (including GPS) because the pixels are re-encoded, and the
+  // output is always a clean JPEG regardless of what came in.
+  async function processImage(file){
+    const bitmap = await loadBitmap(file);
+    let { width:w, height:h } = bitmap;
+    const scale = Math.min(1, MAX_DIM / Math.max(w, h));
+    const tw = Math.max(1, Math.round(w * scale));
+    const th = Math.max(1, Math.round(h * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = tw; canvas.height = th;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";            // flatten transparency for JPEG
+    ctx.fillRect(0, 0, tw, th);
+    ctx.drawImage(bitmap, 0, 0, tw, th);
+    if (bitmap.close) bitmap.close();
+
+    const dataUrl = canvas.toDataURL("image/jpeg", JPEG_Q);
+    return {
+      id: uid(),
+      name: file.name || "photo.jpg",
+      mime: "image/jpeg",
+      w: tw, h: th,
+      data: dataUrl.slice(dataUrl.indexOf(",") + 1)   // strip the data: prefix
+    };
+  }
+
+  async function loadBitmap(file){
+    if (window.createImageBitmap){
+      try { return await createImageBitmap(file); } catch(e){ /* fall through */ }
+    }
+    // Safari / older path
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not read that image.")); };
+      img.src = url;
+    });
+  }
+
+  function imageUrl(rec){
+    if (!rec || !rec.data) return "";
+    return trackUrl("data:image/jpeg;base64," + rec.data);
+  }
+
+  // ---------------- Reveal toggle ----------------
+  let revealAll = false;
+  $("btnReveal").onclick = () => {
+    revealAll = !revealAll;
+    document.body.classList.toggle("reveal-all", revealAll);
+    $("btnReveal").setAttribute("aria-pressed", revealAll ? "true" : "false");
+    $("btnReveal").textContent = revealAll ? "Hide values" : "Reveal values";
+    $("btnReveal").classList.toggle("save-btn", revealAll);
+  };
+
   // ---------------- Categories ----------------
   function renderCategories(){
     const row = $("catRow");
@@ -692,7 +866,24 @@
       const count = vault.entries.filter(e => e.categoryId === cat.id).length;
       const btn = document.createElement("button");
       btn.className = "cattab" + (cat.id === activeCategoryId ? " active" : "");
-      btn.innerHTML = cat.name + ' <span class="count">' + count + '</span>';
+      // name and count are built as text nodes, never interpolated into HTML
+      btn.appendChild(document.createTextNode(cat.name + " "));
+      const cnt = document.createElement("span");
+      cnt.className = "count"; cnt.textContent = count;
+      btn.appendChild(cnt);
+
+      const del = document.createElement("span");
+      del.className = "delcat";
+      del.textContent = "\u00d7";
+      del.title = "Delete category \"" + cat.name + "\"";
+      del.setAttribute("role", "button");
+      del.setAttribute("tabindex", "0");
+      del.setAttribute("aria-label", "Delete category " + cat.name);
+      const doDelete = (ev) => { ev.stopPropagation(); deleteCategory(cat.id); };
+      del.onclick = doDelete;
+      del.onkeydown = (ev) => { if(ev.key === "Enter" || ev.key === " "){ ev.preventDefault(); doDelete(ev); } };
+      btn.appendChild(del);
+
       btn.onclick = () => { activeCategoryId = cat.id; renderCategories(); renderEntries(); };
       row.appendChild(btn);
     });
@@ -701,6 +892,28 @@
     addBtn.textContent = "+ New category";
     addBtn.onclick = () => { $("newCatInput").value=""; $("catOverlay").style.display="flex"; $("newCatInput").focus(); };
     row.appendChild(addBtn);
+  }
+
+  // Deleting a category deletes its records too, so the count is stated up
+  // front and the action is confirmed. There is no undo.
+  function deleteCategory(catId){
+    const cat = vault.categories.find(c => c.id === catId);
+    if (!cat) return;
+    const doomed = vault.entries.filter(e => e.categoryId === catId);
+    const n = doomed.length;
+    const msg = n === 0
+      ? 'Delete the category "' + cat.name + '"?'
+      : 'Delete "' + cat.name + '" and its ' + n + (n === 1 ? " record" : " records") + '?\n\nThis cannot be undone.';
+    if (!confirm(msg)) return;
+
+    vault.entries = vault.entries.filter(e => e.categoryId !== catId);
+    vault.categories = vault.categories.filter(c => c.id !== catId);
+    if (activeCategoryId === catId){
+      activeCategoryId = vault.categories.length ? vault.categories[0].id : null;
+    }
+    markDirty();
+    renderCategories();
+    renderEntries();
   }
 
   $("btnCancelCat").onclick = () => $("catOverlay").style.display = "none";
@@ -725,6 +938,7 @@
 
     const grid = $("entriesGrid");
     grid.innerHTML = "";
+    releaseUrls();   // previous render's object URLs are no longer referenced
     if(list.length === 0){
       grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="display">No records yet</div>Add the first one for this category.</div>';
       return;
@@ -732,6 +946,8 @@
     list.forEach((entry, idx) => {
       const card = document.createElement("div");
       card.className = "card";
+      // focusable so keyboard users can reveal the blurred values
+      card.tabIndex = 0;
       const stampNo = String(idx+1).padStart(3,"0");
       let fieldsHtml = "";
       entry.fields.forEach(f => {
@@ -744,6 +960,27 @@
         fieldsHtml +
         (entry.notes ? '<div class="notes">'+escapeHtml(entry.notes)+'</div>' : '') +
         '<div class="actions"><button class="edit">Edit</button><button class="del">Delete</button></div>';
+
+      // thumbnails appended as elements so base64 data never passes through HTML
+      const imgs = entry.images || [];
+      if(imgs.length){
+        const strip = document.createElement("div");
+        strip.className = "thumbs";
+        imgs.forEach((rec, i) => {
+          const t = document.createElement("div");
+          t.className = "thumb";
+          t.title = rec.name + " — click to enlarge";
+          const im = document.createElement("img");
+          im.src = imageUrl(rec);
+          im.alt = rec.name;
+          im.loading = "lazy";
+          t.appendChild(im);
+          t.onclick = () => openLightbox(entry, i);
+          strip.appendChild(t);
+        });
+        card.appendChild(strip);
+      }
+
       card.querySelector(".edit").onclick = () => openEntryModal(entry.id);
       card.querySelector(".del").onclick = () => {
         if(confirm('Delete "' + (entry.title || "this record") + '"? This cannot be undone.')){
@@ -757,9 +994,32 @@
     });
   }
 
+  // ---------------- Lightbox ----------------
+  let lightboxUrls = [];
+  function openLightbox(entry, index){
+    const rec = (entry.images || [])[index];
+    if(!rec || !rec.data) return;
+    lightboxUrls.forEach(u => { try{ URL.revokeObjectURL(u); }catch(e){} });
+    const url = trackUrl("data:image/jpeg;base64," + rec.data);
+    lightboxUrls = [url];
+    $("lightboxImg").src = url;
+    $("lightboxImg").alt = rec.name;
+    $("lightboxTitle").textContent = rec.name + "  \u00b7  " + rec.w + "\u00d7" + rec.h;
+    $("lightbox").style.display = "flex";
+  }
+  function closeLightbox(){
+    $("lightbox").style.display = "none";
+    $("lightboxImg").removeAttribute("src");
+    lightboxUrls.forEach(u => { try{ URL.revokeObjectURL(u); }catch(e){} });
+    lightboxUrls = [];
+  }
+  $("btnCloseLightbox").onclick = closeLightbox;
+
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
+
+  let pendingImages = [];   // images staged for the record being edited
 
   $("btnAddEntry").onclick = () => openEntryModal(null);
 
@@ -774,9 +1034,54 @@
     const fields = entry ? entry.fields.slice() : defaultFieldsFor(activeCategoryId);
     if(fields.length === 0) fields.push({k:"",v:""});
     fields.forEach(f => addFieldRow(f.k, f.v));
+    // copy, so cancelling the modal discards staged additions and removals
+    pendingImages = entry && entry.images ? entry.images.map(i => Object.assign({}, i)) : [];
+    renderImageList();
+    $("imageInput").value = "";
+    $("imageHint").textContent = "Photos are shrunk to 1600px and stored inside the encrypted vault. Originals stay on your device.";
     $("entryOverlay").style.display = "flex";
     $("entryTitle").focus();
   }
+
+  function renderImageList(){
+    const box = $("imageList");
+    box.innerHTML = "";
+    if(pendingImages.length === 0) return;
+    pendingImages.forEach((rec, i) => {
+      const row = document.createElement("div");
+      row.className = "imgrow";
+      const nm = document.createElement("div");
+      nm.className = "name"; nm.textContent = rec.name;
+      const dims = document.createElement("div");
+      dims.className = "dims";
+      dims.textContent = rec.w + "\u00d7" + rec.h + "  " + Math.max(1, Math.round(rec.data.length * 0.75 / 1024)) + " KB";
+      const rm = document.createElement("button");
+      rm.type = "button"; rm.textContent = "Remove";
+      rm.onclick = () => { pendingImages.splice(i, 1); renderImageList(); };
+      row.appendChild(nm); row.appendChild(dims); row.appendChild(rm);
+      box.appendChild(row);
+    });
+  }
+
+  $("imagePickArea").onclick = () => $("imageInput").click();
+  $("imageInput").onchange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if(files.length === 0) return;
+    $("imageHint").textContent = "Processing " + files.length + (files.length === 1 ? " image\u2026" : " images\u2026");
+    for(const f of files){
+      if(!/^image\//.test(f.type)) continue;
+      try{
+        pendingImages.push(await processImage(f));
+      }catch(err){
+        $("imageHint").textContent = "Could not read " + f.name + ".";
+      }
+    }
+    renderImageList();
+    const total = pendingImages.reduce((n, r) => n + r.data.length, 0);
+    $("imageHint").textContent = pendingImages.length + (pendingImages.length === 1 ? " image" : " images")
+      + " \u00b7 about " + Math.max(1, Math.round(total * 0.75 / 1024)) + " KB in the vault file.";
+    e.target.value = "";
+  };
 
   function defaultFieldsFor(catId){
     const cat = vault.categories.find(c => c.id === catId);
@@ -813,13 +1118,18 @@
       if(k || v) fields.push({k, v});
     });
     const notes = $("entryNotes").value.trim();
+    const images = pendingImages.map(i => Object.assign({}, i));
 
     if(editingEntryId){
       const entry = vault.entries.find(e => e.id === editingEntryId);
       entry.title = title; entry.fields = fields; entry.notes = notes;
+      if(images.length) entry.images = images; else delete entry.images;
     } else {
-      vault.entries.push({ id: uid(), categoryId: activeCategoryId, title, fields, notes });
+      const rec = { id: uid(), categoryId: activeCategoryId, title, fields, notes };
+      if(images.length) rec.images = images;
+      vault.entries.push(rec);
     }
+    pendingImages = [];
     markDirty();
     $("entryOverlay").style.display = "none";
     renderCategories();
@@ -829,6 +1139,14 @@
   // close modals on overlay click (not inner click)
   [$("entryOverlay"), $("catOverlay")].forEach(ov => {
     ov.addEventListener("click", (e) => { if(e.target === ov) ov.style.display = "none"; });
+  });
+  $("lightbox").addEventListener("click", (e) => { if(e.target === $("lightbox")) closeLightbox(); });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+      if($("lightbox").style.display === "flex") closeLightbox();
+      else if($("entryOverlay").style.display === "flex"){ pendingImages = []; $("entryOverlay").style.display = "none"; }
+      else if($("catOverlay").style.display === "flex") $("catOverlay").style.display = "none";
+    }
   });
 
 })();
