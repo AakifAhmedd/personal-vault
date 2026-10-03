@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Registry — Your Numbers Vault</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2A3D;
+    --ink-soft:#5B6B7C;
+    --paper:#EAE2CC;
+    --paper-deep:#DED2B0;
+    --card:#F7F2E4;
+    --brass:#A87C2C;
+    --brass-deep:#8A6520;
+    --rust:#9C3B2E;
+    --line: rgba(27,42,61,0.16);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(27,42,61,0.05) 1px, transparent 0);
+    background-size: 22px 22px;
+    color:var(--ink);
+    font-family:'Source Serif 4', Georgia, serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  h1,h2,h3,.display{font-family:'Fraunces', serif;}
+  button{font-family:inherit; cursor:pointer;}
+  input, textarea, select{font-family:inherit;}
+  ::selection{background:var(--brass); color:var(--card);}
+
+  /* ---------- Lock screen ---------- */
+  #lockScreen{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .cover{
+    width:100%;
+    max-width:420px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:40px 36px 32px;
+    position:relative;
+    box-shadow: 0 1px 0 rgba(27,42,61,0.05), 0 20px 40px -20px rgba(27,42,61,0.35);
+  }
+  .cover::before, .cover::after{
+    content:"";
+    position:absolute;
+    width:14px; height:14px;
+    border:2px solid var(--brass);
+  }
+  .cover::before{ top:10px; left:10px; border-right:none; border-bottom:none; }
+  .cover::after{ bottom:10px; right:10px; border-left:none; border-top:none; }
+  .seal{
+    width:56px; height:56px;
+    margin:0 auto 18px;
+    border:2px solid var(--brass);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .seal svg{width:26px;height:26px;fill:var(--brass);}
+  .cover h1{
+    text-align:center;
+    font-size:28px;
+    font-weight:600;
+    margin:0 0 4px;
+    letter-spacing:0.01em;
+  }
+  .cover .sub{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:14px;
+    margin:0 0 28px;
+    letter-spacing:0.02em;
+  }
+  .field{ margin-bottom:16px; }
+  .field label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:2px;
+    background:var(--paper);
+    color:var(--ink);
+    font-size:15px;
+  }
+  .field input:focus{ outline:2px solid var(--brass); outline-offset:1px; }
+  .btn{
+    width:100%;
+    padding:12px 16px;
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    border-radius:2px;
+    font-size:14px;
+    letter-spacing:0.03em;
+    font-weight:600;
+    transition:background .15s, color .15s;
+  }
+  .btn:hover{ background:var(--brass-deep); border-color:var(--brass-deep); }
+  .btn:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+  .btn-outline{
+    background:transparent;
+    color:var(--ink);
+    border:1px solid var(--line);
+  }
+  .btn-outline:hover{ background:var(--paper); border-color:var(--ink-soft); }
+  .btn-danger{ background:var(--rust); border-color:var(--rust); color:#fff; }
+  .btn-danger:hover{ background:#7d2e23; border-color:#7d2e23; }
+  .btn-sm{ width:auto; padding:8px 14px; font-size:13px; }
+
+  .tabbar{
+    display:flex;
+    gap:8px;
+    margin:20px 0 24px;
+    border-bottom:1px solid var(--line);
+  }
+  .tabbtn{
+    background:none; border:none;
+    padding:10px 4px;
+    font-size:14px;
+    color:var(--ink-soft);
+    border-bottom:2px solid transparent;
+    margin-bottom:-1px;
+  }
+  .tabbtn.active{ color:var(--ink); border-bottom-color:var(--brass); font-weight:600; }
+
+  .hint{ font-size:12.5px; color:var(--ink-soft); margin-top:14px; line-height:1.5; text-align:center; }
+  .error{ color:var(--rust); font-size:13px; margin-top:10px; min-height:16px; text-align:center; }
+  .filepick{
+    border:1px dashed var(--line);
+    border-radius:2px;
+    padding:16px;
+    text-align:center;
+    font-size:13px;
+    color:var(--ink-soft);
+    margin-bottom:16px;
+    cursor:pointer;
+    background:var(--paper);
+  }
+  .filepick:hover{ border-color:var(--brass); color:var(--ink); }
+  .filepick.has-file{ border-style:solid; border-color:var(--brass); color:var(--ink); }
+
+  /* ---------- App shell ---------- */
+  #app{ display:none; min-height:100vh; }
+  .topbar{
+    background:var(--ink);
+    color:var(--paper);
+    padding:16px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand h1{ font-size:20px; margin:0; font-weight:600; }
+  .brand .tag{ font-size:11px; color:#C9AF7A; letter-spacing:0.1em; text-transform:uppercase; }
+  .topactions{ display:flex; gap:8px; align-items:center; }
+  .topactions button{
+    background:transparent; border:1px solid rgba(234,226,204,0.3);
+    color:var(--paper); padding:8px 14px; border-radius:2px; font-size:13px;
+  }
+  .topactions button:hover{ border-color:var(--brass); color:#fff; }
+  .topactions .save-btn{ background:var(--brass); border-color:var(--brass); color:#1B2A3D; font-weight:600; }
+  .topactions .save-btn:hover{ background:#c1913f; }
+  .dirty-dot{ width:7px; height:7px; border-radius:50%; background:var(--rust); display:inline-block; margin-right:6px; vertical-align:middle; }
+
+  .layout{ max-width:1080px; margin:0 auto; padding:28px; }
+
+  .catrow{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:26px; align-items:center; }
+  .cattab{
+    position:relative;
+    padding:10px 18px 10px 16px;
+    background:var(--paper-deep);
+    border:1px solid var(--line);
+    border-bottom:none;
+    border-radius:6px 6px 0 0;
+    font-size:13.5px;
+    color:var(--ink-soft);
+    transform:translateY(3px);
+  }
+  .cattab.active{
+    background:var(--card);
+    color:var(--ink);
+    font-weight:600;
+    transform:translateY(0);
+    box-shadow: 0 -1px 0 var(--brass) inset;
+  }
+  .cattab .count{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--brass-deep); margin-left:6px; }
+  .addcat{
+    background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft);
+    padding:9px 14px; border-radius:6px; font-size:13px;
+  }
+  .addcat:hover{ border-color:var(--brass); color:var(--brass-deep); }
+
+  .entrybar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .entrybar .catname{ font-size:22px; }
+  .entrybar .catmeta{ font-size:12.5px; color:var(--ink-soft); }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));
+    gap:16px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:20px 20px 16px;
+    position:relative;
+    transition:box-shadow .15s, transform .15s;
+  }
+  .card:hover{ box-shadow:0 10px 24px -16px rgba(27,42,61,0.4); }
+  .stamp{
+    position:absolute; top:14px; right:14px;
+    width:44px; height:44px;
+    border:1.5px solid var(--brass);
+    border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    transform:rotate(-8deg);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--brass-deep);
+    line-height:1.1;
+    text-align:center;
+    opacity:0.85;
+  }
+  .card h3{ font-size:17px; margin:0 22px 12px 0; padding-right:40px; }
+  .kv{ margin-bottom:8px; }
+  .kv .k{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--ink-soft); }
+  .kv .v{ font-family:'IBM Plex Mono', monospace; font-size:14.5px; word-break:break-word; }
+  .card .notes{ font-size:12.5px; color:var(--ink-soft); margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-style:italic; }
+  .card .actions{ display:flex; gap:8px; margin-top:14px; }
+  .card .actions button{
+    flex:1; font-size:12px; padding:7px; border-radius:2px;
+    border:1px solid var(--line); background:var(--paper);
+  }
+  .card .actions button:hover{ border-color:var(--brass); }
+  .card .actions .del:hover{ border-color:var(--rust); color:var(--rust); }
+
+  .empty{
+    text-align:center; padding:60px 20px; color:var(--ink-soft);
+    border:1px dashed var(--line); border-radius:4px;
+  }
+  .empty .display{ font-size:20px; color:var(--ink); margin-bottom:6px; }
+
+  /* modal */
+  .overlay{
+    display:none; position:fixed; inset:0; background:rgba(27,42,61,0.5);
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal{
+    background:var(--card); border-radius:4px; width:100%; max-width:520px;
+    max-height:88vh; overflow-y:auto; padding:28px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.4);
+  }
+  .modal h2{ font-size:20px; margin:0 0 20px; }
+  .rowfield{ display:flex; gap:8px; margin-bottom:10px; }
+  .rowfield input{ flex:1; padding:9px 10px; border:1px solid var(--line); border-radius:2px; background:var(--paper); font-size:14px; }
+  .rowfield input.klabel{ flex:0 0 40%; }
+  .rowfield button{ background:none; border:1px solid var(--line); border-radius:2px; padding:0 12px; color:var(--rust); }
+  .addfield{ background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft); padding:8px 14px; border-radius:2px; font-size:13px; margin:4px 0 18px; }
+  .addfield:hover{ border-color:var(--brass); color:var(--brass-deep); }
+  .modal textarea{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:2px; background:var(--paper); font-size:14px; min-height:70px; resize:vertical; }
+  .modalfoot{ display:flex; gap:10px; margin-top:22px; }
+  .modalfoot .btn{ width:auto; flex:1; }
+
+  footer.note{ text-align:center; color:var(--ink-soft); font-size:12px; padding:30px 20px 40px; }
+
+  @media (max-width:600px){
+    .topbar{ padding:14px 16px; }
+    .layout{ padding:18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOCK SCREEN ===================== -->
+<div id="lockScreen">
+  <div class="cover">
+    <div class="seal">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+    </div>
+    <h1 id="lockTitle">The Registry</h1>
+    <p class="sub">Your private ledger of numbers that matter</p>
+
+    <div id="chooserView">
+      <button class="btn" id="btnNewVault">Start a new vault</button>
+      <div style="height:10px"></div>
+      <button class="btn btn-outline" id="btnOpenVault">Open an existing vault file</button>
+      <p class="hint">Everything is encrypted with a password only you know, and saved as a single file on your own device. Nothing leaves your browser.</p>
+    </div>
+
+    <div id="openView" style="display:none;">
+      <div class="filepick" id="filePickArea">Click to choose your <span class="mono">.vault</span> file</div>
+      <input type="file" id="fileInput" accept=".vault,application/json" style="display:none;">
+      <div class="field">
+        <label for="openPw">Password</label>
+        <input type="password" id="openPw" placeholder="Enter your vault password">
+      </div>
+      <button class="btn" id="btnUnlock">Unlock vault</button>
+      <button class="btn btn-outline" id="btnBackFromOpen" style="margin-top:10px;">Back</button>
+      <p class="error" id="openError"></p>
+    </div>
+
+    <div id="createView" style="display:none;">
+      <div class="field">
+        <label for="vaultName">Vault name</label>
+        <input type="text" id="vaultName" placeholder="e.g. My Records" value="My Records">
+      </div>
+      <div class="field">
+        <label for="newPw">Set a password</label>
+        <input type="password" id="newPw" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="newPw2">Confirm password</label>
+        <input type="password" id="newPw2" placeholder="Type it again">
+      </div>
+      <button class="btn" id="btnCreate">Create vault</button>
+      <button class="btn btn-outline" id="btnBackFromCreate" style="margin-top:10px;">Back</button>
+      <p class="error" id="createError"></p>
+      <p class="hint">There is no password reset. If you forget this password, the vault cannot be recovered — write it down somewhere safe.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MAIN APP ===================== -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      <h1 id="appVaultName">My Records</h1>
+      <span class="tag">Private Registry</span>
+    </div>
+    <div class="topactions">
+      <span id="dirtyLabel" style="font-size:12.5px; color:#C9AF7A; display:none;"><span class="dirty-dot"></span>Unsaved changes</span>
+      <button class="save-btn" id="btnSave">Save vault file</button>
+      <button id="btnLock">Lock</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="catrow" id="catRow"></div>
+
+    <div class="entrybar">
+      <div>
+        <div class="catname display" id="activeCatName">Vehicles</div>
+        <div class="catmeta" id="activeCatMeta"></div>
+      </div>
+      <button class="btn btn-sm" id="btnAddEntry" style="width:auto;">+ Add record</button>
+    </div>
+
+    <div id="entriesGrid" class="grid"></div>
+  </div>
+
+  <footer class="note">Vault saved locally as an encrypted file. Keep a backup copy somewhere safe — a lost file with a forgotten password cannot be recovered.</footer>
+</div>
+
+<!-- ===================== ENTRY MODAL ===================== -->
+<div class="overlay" id="entryOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Add record</h2>
+    <div class="field">
+      <label for="entryTitle">Title</label>
+      <input type="text" id="entryTitle" placeholder="e.g. Toyota Corolla 2021">
+    </div>
+    <label style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:8px;">Fields</label>
+    <div id="fieldRows"></div>
+    <button class="addfield" id="btnAddField">+ Add field</button>
+    <div class="field">
+      <label for="entryNotes">Notes (optional)</label>
+      <textarea id="entryNotes" placeholder="Anything worth remembering"></textarea>
+    </div>
+    <div class="modalfoot">
+      <button class="btn btn-outline" id="btnCancelEntry">Cancel</button>
+      <button class="btn" id="btnSaveEntry">Save record</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== NEW CATEGORY MODAL ===================== -->
+<div class="overlay" id="catOverlay">
+  <div class="modal" style="max-width:380px;">
+    <h2>New category</h2>
+    <div class="field">
+      <label for="newCatInput">Category name</label>
+      <input type="text" id="newCatInput" placeholder="e.g. Passports & Visas">
+    </div>
+    <div class="modalfoot">
+      <button class="btn btn-outline" id="btnCancelCat">Cancel</button>
+      <button class="btn" id="btnSaveCat">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- State ----------------
+  let vault = null;          // { name, categories: [{id,name}], entries: [{id,categoryId,title,fields:[{k,v}],notes}] }
+  let activeCategoryId = null;
+  let derivedKeyCache = null; // CryptoKey, only kept in memory while unlocked
+  let isDirty = false;
+  let editingEntryId = null;
+  let fileHandle = null;     // File System Access API handle, if available
+
+  const $ = (id) => document.getElementById(id);
+
+  function uid(){ return Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+  function defaultVault(name){
+    return {
+      name: name || "My Records",
+      categories: [
+        {id:"vehicles", name:"Vehicles"},
+        {id:"ids", name:"IDs & Licenses"}
+      ],
+      entries: []
+    };
+  }
+
+  // ---------------- Crypto ----------------
+  async function deriveKey(password, saltBytes){
+    const enc = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey(
+      "raw", enc.encode(password), {name:"PBKDF2"}, false, ["deriveKey"]
+    );
+    return crypto.subtle.deriveKey(
+      {name:"PBKDF2", salt:saltBytes, iterations:250000, hash:"SHA-256"},
+      baseKey,
+      {name:"AES-GCM", length:256},
+      false,
+      ["encrypt","decrypt"]
+    );
+  }
+
+  function b64(bytes){
+    let bin = "";
+    const arr = new Uint8Array(bytes);
+    for(let i=0;i<arr.length;i++) bin += String.fromCharCode(arr[i]);
+    return btoa(bin);
+  }
+  function fromB64(str){
+    const bin = atob(str);
+    const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  }
+
+  async function encryptVault(password, vaultObj){
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(password, salt);
+    const enc = new TextEncoder();
+    const cipherBuf = await crypto.subtle.encrypt(
+      {name:"AES-GCM", iv}, key, enc.encode(JSON.stringify(vaultObj))
+    );
+    derivedKeyCache = key;
+    return {
+      app: "registry-vault",
+      version: 1,
+      salt: b64(salt),
+      iv: b64(iv),
+      data: b64(cipherBuf)
+    };
+  }
+
+  async function decryptVault(password, fileObj){
+    const salt = fromB64(fileObj.salt);
+    const iv = fromB64(fileObj.iv);
+    const key = await deriveKey(password, salt);
+    const cipherBytes = fromB64(fileObj.data);
+    const plainBuf = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, cipherBytes);
+    derivedKeyCache = key;
+    const dec = new TextDecoder();
+    return JSON.parse(dec.decode(plainBuf));
+  }
+
+  // ---------------- Lock screen flow ----------------
+  let pendingOpenFileText = null;
+
+  $("btnNewVault").onclick = () => { $("chooserView").style.display="none"; $("createView").style.display="block"; };
+  $("btnOpenVault").onclick = () => { $("chooserView").style.display="none"; $("openView").style.display="block"; };
+  $("btnBackFromCreate").onclick = () => { $("createView").style.display="none"; $("chooserView").style.display="block"; $("createError").textContent=""; };
+  $("btnBackFromOpen").onclick = () => { $("openView").style.display="none"; $("chooserView").style.display="block"; $("openError").textContent=""; };
+
+  $("filePickArea").onclick = () => $("fileInput").click();
+  $("fileInput").onchange = (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      pendingOpenFileText = reader.result;
+      $("filePickArea").textContent = "Selected: " + f.name;
+      $("filePickArea").classList.add("has-file");
+    };
+    reader.readAsText(f);
+  };
+
+  $("btnCreate").onclick = async () => {
+    const name = $("vaultName").value.trim() || "My Records";
+    const pw = $("newPw").value;
+    const pw2 = $("newPw2").value;
+    $("createError").textContent = "";
+    if(pw.length < 8){ $("createError").textContent = "Password should be at least 8 characters."; return; }
+    if(pw !== pw2){ $("createError").textContent = "Passwords don't match."; return; }
+    vault = defaultVault(name);
+    // establish a derived key by doing a dummy encrypt so save works immediately
+    await encryptVault(pw, vault);
+    window.__vaultPassword = pw; // kept only in memory for this session, needed to re-encrypt on save
+    enterApp();
+  };
+
+  $("btnUnlock").onclick = async () => {
+    $("openError").textContent = "";
+    if(!pendingOpenFileText){ $("openError").textContent = "Choose your vault file first."; return; }
+    const pw = $("openPw").value;
+    if(!pw){ $("openError").textContent = "Enter your password."; return; }
+    try{
+      const fileObj = JSON.parse(pendingOpenFileText);
+      const opened = await decryptVault(pw, fileObj);
+      vault = opened;
+      window.__vaultPassword = pw;
+      enterApp();
+    }catch(err){
+      $("openError").textContent = "Couldn't unlock — check your file and password.";
+    }
+  };
+
+  function enterApp(){
+    document.getElementById("lockScreen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    activeCategoryId = vault.categories[0] ? vault.categories[0].id : null;
+    $("appVaultName").textContent = vault.name;
+    isDirty = false;
+    updateDirtyLabel();
+    renderCategories();
+    renderEntries();
+  }
+
+  function markDirty(){ isDirty = true; updateDirtyLabel(); }
+  function updateDirtyLabel(){ $("dirtyLabel").style.display = isDirty ? "inline" : "none"; }
+
+  // ---------------- Save (download / File System Access API) ----------------
+  $("btnSave").onclick = async () => {
+    const pw = window.__vaultPassword;
+    const fileObj = await encryptVault(pw, vault);
+    const text = JSON.stringify(fileObj, null, 0);
+    const suggestedName = (vault.name || "vault").replace(/[^a-z0-9\-_ ]/gi,"").trim().replace(/\s+/g,"-") + ".vault";
+
+    if(window.showSaveFilePicker){
+      try{
+        if(!fileHandle){
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName,
+            types: [{ description: "Vault file", accept: {"application/json": [".vault"]} }]
+          });
+        }
+        const writable = await fileHandle.createWritable();
+        await writable.write(text);
+        await writable.close();
+        isDirty = false;
+        updateDirtyLabel();
+        return;
+      }catch(err){
+        // user cancelled the picker, or API failed — fall back to download below
+        if(err && err.name === "AbortError") return;
+      }
+    }
+    // Fallback: trigger a download
+    const blob = new Blob([text], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = suggestedName;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    isDirty = false;
+    updateDirtyLabel();
+  };
+
+  $("btnLock").onclick = () => {
+    if(isDirty && !confirm("You have unsaved changes. Lock anyway and lose them?")) return;
+    vault = null;
+    derivedKeyCache = null;
+    window.__vaultPassword = null;
+    fileHandle = null;
+    pendingOpenFileText = null;
+    document.getElementById("app").style.display = "none";
+    document.getElementById("lockScreen").style.display = "flex";
+    $("chooserView").style.display = "block";
+    $("createView").style.display = "none";
+    $("openView").style.display = "none";
+    $("newPw").value = ""; $("newPw2").value = ""; $("vaultName").value = "My Records";
+    $("openPw").value = ""; $("filePickArea").textContent = "Click to choose your .vault file";
+    $("filePickArea").classList.remove("has-file");
+  };
+
+  window.addEventListener("beforeunload", (e) => {
+    if(isDirty){ e.preventDefault(); e.returnValue = ""; }
+  });
+
+  // ---------------- Categories ----------------
+  function renderCategories(){
+    const row = $("catRow");
+    row.innerHTML = "";
+    vault.categories.forEach(cat => {
+      const count = vault.entries.filter(e => e.categoryId === cat.id).length;
+      const btn = document.createElement("button");
+      btn.className = "cattab" + (cat.id === activeCategoryId ? " active" : "");
+      btn.innerHTML = cat.name + ' <span class="count">' + count + '</span>';
+      btn.onclick = () => { activeCategoryId = cat.id; renderCategories(); renderEntries(); };
+      row.appendChild(btn);
+    });
+    const addBtn = document.createElement("button");
+    addBtn.className = "addcat";
+    addBtn.textContent = "+ New category";
+    addBtn.onclick = () => { $("newCatInput").value=""; $("catOverlay").style.display="flex"; $("newCatInput").focus(); };
+    row.appendChild(addBtn);
+  }
+
+  $("btnCancelCat").onclick = () => $("catOverlay").style.display = "none";
+  $("btnSaveCat").onclick = () => {
+    const name = $("newCatInput").value.trim();
+    if(!name) return;
+    const id = uid();
+    vault.categories.push({id, name});
+    activeCategoryId = id;
+    markDirty();
+    $("catOverlay").style.display = "none";
+    renderCategories();
+    renderEntries();
+  };
+
+  // ---------------- Entries ----------------
+  function renderEntries(){
+    const cat = vault.categories.find(c => c.id === activeCategoryId);
+    $("activeCatName").textContent = cat ? cat.name : "";
+    const list = vault.entries.filter(e => e.categoryId === activeCategoryId);
+    $("activeCatMeta").textContent = list.length + (list.length === 1 ? " record" : " records");
+
+    const grid = $("entriesGrid");
+    grid.innerHTML = "";
+    if(list.length === 0){
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="display">No records yet</div>Add the first one for this category.</div>';
+      return;
+    }
+    list.forEach((entry, idx) => {
+      const card = document.createElement("div");
+      card.className = "card";
+      const stampNo = String(idx+1).padStart(3,"0");
+      let fieldsHtml = "";
+      entry.fields.forEach(f => {
+        if(!f.k && !f.v) return;
+        fieldsHtml += '<div class="kv"><div class="k">'+escapeHtml(f.k)+'</div><div class="v">'+escapeHtml(f.v)+'</div></div>';
+      });
+      card.innerHTML =
+        '<div class="stamp">No.<br>'+stampNo+'</div>' +
+        '<h3>'+escapeHtml(entry.title || "Untitled")+'</h3>' +
+        fieldsHtml +
+        (entry.notes ? '<div class="notes">'+escapeHtml(entry.notes)+'</div>' : '') +
+        '<div class="actions"><button class="edit">Edit</button><button class="del">Delete</button></div>';
+      card.querySelector(".edit").onclick = () => openEntryModal(entry.id);
+      card.querySelector(".del").onclick = () => {
+        if(confirm('Delete "' + (entry.title || "this record") + '"? This cannot be undone.')){
+          vault.entries = vault.entries.filter(e => e.id !== entry.id);
+          markDirty();
+          renderCategories();
+          renderEntries();
+        }
+      };
+      grid.appendChild(card);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  $("btnAddEntry").onclick = () => openEntryModal(null);
+
+  function openEntryModal(entryId){
+    editingEntryId = entryId;
+    const entry = entryId ? vault.entries.find(e => e.id === entryId) : null;
+    $("modalTitle").textContent = entry ? "Edit record" : "Add record";
+    $("entryTitle").value = entry ? entry.title : "";
+    $("entryNotes").value = entry ? (entry.notes || "") : "";
+    const rows = $("fieldRows");
+    rows.innerHTML = "";
+    const fields = entry ? entry.fields.slice() : defaultFieldsFor(activeCategoryId);
+    if(fields.length === 0) fields.push({k:"",v:""});
+    fields.forEach(f => addFieldRow(f.k, f.v));
+    $("entryOverlay").style.display = "flex";
+    $("entryTitle").focus();
+  }
+
+  function defaultFieldsFor(catId){
+    const cat = vault.categories.find(c => c.id === catId);
+    if(cat && cat.id === "vehicles"){
+      return [{k:"VIN", v:""},{k:"License plate", v:""},{k:"Insurance policy #", v:""}];
+    }
+    if(cat && cat.id === "ids"){
+      return [{k:"Document number", v:""},{k:"Issued", v:""},{k:"Expires", v:""}];
+    }
+    return [{k:"", v:""}];
+  }
+
+  function addFieldRow(k, v){
+    const row = document.createElement("div");
+    row.className = "rowfield";
+    row.innerHTML =
+      '<input type="text" class="klabel" placeholder="Field (e.g. VIN)" value="'+escapeHtml(k||"")+'">' +
+      '<input type="text" class="vval" placeholder="Value" value="'+escapeHtml(v||"")+'">' +
+      '<button type="button" title="Remove field">&times;</button>';
+    row.querySelector("button").onclick = () => row.remove();
+    $("fieldRows").appendChild(row);
+  }
+
+  $("btnAddField").onclick = () => addFieldRow("", "");
+  $("btnCancelEntry").onclick = () => $("entryOverlay").style.display = "none";
+
+  $("btnSaveEntry").onclick = () => {
+    const title = $("entryTitle").value.trim();
+    if(!title){ $("entryTitle").focus(); return; }
+    const fields = [];
+    $("fieldRows").querySelectorAll(".rowfield").forEach(row => {
+      const k = row.querySelector(".klabel").value.trim();
+      const v = row.querySelector(".vval").value.trim();
+      if(k || v) fields.push({k, v});
+    });
+    const notes = $("entryNotes").value.trim();
+
+    if(editingEntryId){
+      const entry = vault.entries.find(e => e.id === editingEntryId);
+      entry.title = title; entry.fields = fields; entry.notes = notes;
+    } else {
+      vault.entries.push({ id: uid(), categoryId: activeCategoryId, title, fields, notes });
+    }
+    markDirty();
+    $("entryOverlay").style.display = "none";
+    renderCategories();
+    renderEntries();
+  };
+
+  // close modals on overlay click (not inner click)
+  [$("entryOverlay"), $("catOverlay")].forEach(ov => {
+    ov.addEventListener("click", (e) => { if(e.target === ov) ov.style.display = "none"; });
+  });
+
+})();
+</script>
+</body>
+</html>
