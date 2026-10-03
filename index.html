@@ -17,14 +17,35 @@
     --brass-deep:#8A6520;
     --rust:#9C3B2E;
     --line: rgba(27,42,61,0.16);
+
+    /* ---- glass surface tokens (ported from RACK's data-style="glass") ----
+       Opacities are a little higher than RACK's 52%: this app is text-dense
+       (mono field values at 14.5px), so the surfaces stay legible while the
+       gradient still reads through them. */
+    --glass-bg: color-mix(in srgb, var(--card) 72%, transparent);
+    --glass-strong: color-mix(in srgb, var(--card) 88%, transparent);
+    --glass-border: color-mix(in srgb, var(--card) 78%, transparent);
+    --glass-shadow:
+      0 8px 28px rgba(27,42,61,0.16),
+      inset 0 1px 0 rgba(255,255,255,0.55);
+    --glass-blur: blur(16px) saturate(150%);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:var(--paper);
+    /* glass needs colour behind it to refract: brass/rust/ink blooms over the
+       paper, still carrying the ledger dot-grid on top.
+       The paper base is background-color, NOT a final background-image layer:
+       a trailing colour layer invalidates the whole shorthand in Chrome and
+       the gradients disappear with it. */
+    background-color: var(--paper);
     background-image:
+      radial-gradient(60vmax 60vmax at 10% 6%, rgba(168,124,44,0.34), transparent 62%),
+      radial-gradient(55vmax 55vmax at 92% 18%, rgba(156,59,46,0.24), transparent 62%),
+      radial-gradient(60vmax 60vmax at 70% 96%, rgba(27,42,61,0.20), transparent 62%),
       radial-gradient(circle at 1px 1px, rgba(27,42,61,0.05) 1px, transparent 0);
-    background-size: 22px 22px;
+    background-size: auto, auto, auto, 22px 22px;
+    background-attachment: fixed;
     color:var(--ink);
     font-family:'Source Serif 4', Georgia, serif;
     min-height:100vh;
@@ -47,12 +68,14 @@
   .cover{
     width:100%;
     max-width:420px;
-    background:var(--card);
-    border:1px solid var(--line);
+    background:var(--glass-strong);
+    border:1px solid var(--glass-border);
     border-radius:4px;
     padding:40px 36px 32px;
     position:relative;
-    box-shadow: 0 1px 0 rgba(27,42,61,0.05), 0 20px 40px -20px rgba(27,42,61,0.35);
+    box-shadow: var(--glass-shadow), 0 20px 40px -20px rgba(27,42,61,0.35);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
   .cover::before, .cover::after{
     content:"";
@@ -96,9 +119,9 @@
   .field input{
     width:100%;
     padding:11px 12px;
-    border:1px solid var(--line);
+    border:1px solid var(--glass-border);
     border-radius:2px;
-    background:var(--paper);
+    background: color-mix(in srgb, var(--card) 70%, transparent);
     color:var(--ink);
     font-size:15px;
   }
@@ -114,15 +137,20 @@
     letter-spacing:0.03em;
     font-weight:600;
     transition:background .15s, color .15s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.30);
   }
   .btn:hover{ background:var(--brass-deep); border-color:var(--brass-deep); }
   .btn:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
   .btn-outline{
-    background:transparent;
+    background:var(--glass-bg);
     color:var(--ink);
-    border:1px solid var(--line);
+    /* slightly firmer than --glass-border: against the cover card an all-glass
+       outline button loses its edge entirely */
+    border:1px solid color-mix(in srgb, var(--ink) 26%, transparent);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
-  .btn-outline:hover{ background:var(--paper); border-color:var(--ink-soft); }
+  .btn-outline:hover{ background:var(--glass-strong); border-color:var(--ink-soft); }
   .btn-danger{ background:var(--rust); border-color:var(--rust); color:#fff; }
   .btn-danger:hover{ background:#7d2e23; border-color:#7d2e23; }
   .btn-sm{ width:auto; padding:8px 14px; font-size:13px; }
@@ -146,7 +174,7 @@
   .hint{ font-size:12.5px; color:var(--ink-soft); margin-top:14px; line-height:1.5; text-align:center; }
   .error{ color:var(--rust); font-size:13px; margin-top:10px; min-height:16px; text-align:center; }
   .filepick{
-    border:1px dashed var(--line);
+    border:1px dashed var(--glass-border);
     border-radius:2px;
     padding:16px;
     text-align:center;
@@ -154,7 +182,9 @@
     color:var(--ink-soft);
     margin-bottom:16px;
     cursor:pointer;
-    background:var(--paper);
+    background:var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
   .filepick:hover{ border-color:var(--brass); color:var(--ink); }
   .filepick.has-file{ border-style:solid; border-color:var(--brass); color:var(--ink); }
@@ -162,7 +192,10 @@
   /* ---------- App shell ---------- */
   #app{ display:none; min-height:100vh; }
   .topbar{
-    background:var(--ink);
+    background: color-mix(in srgb, var(--ink) 72%, transparent);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border-bottom:1px solid color-mix(in srgb, var(--brass) 60%, transparent);
     color:var(--paper);
     padding:16px 28px;
     display:flex;
@@ -170,6 +203,9 @@
     justify-content:space-between;
     flex-wrap:wrap;
     gap:12px;
+    position:sticky;
+    top:0;
+    z-index:10;
   }
   .brand{ display:flex; align-items:baseline; gap:10px; }
   .brand h1{ font-size:20px; margin:0; font-weight:600; }
@@ -190,16 +226,18 @@
   .cattab{
     position:relative;
     padding:10px 18px 10px 16px;
-    background:var(--paper-deep);
-    border:1px solid var(--line);
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
     border-bottom:none;
     border-radius:6px 6px 0 0;
     font-size:13.5px;
     color:var(--ink-soft);
     transform:translateY(3px);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
   .cattab.active{
-    background:var(--card);
+    background:var(--glass-strong);
     color:var(--ink);
     font-weight:600;
     transform:translateY(0);
@@ -222,14 +260,17 @@
     gap:16px;
   }
   .card{
-    background:var(--card);
-    border:1px solid var(--line);
+    /* translucent but un-blurred, following RACK: many cards per screen stay
+       fast, and the field values stay crisp to read */
+    background:var(--glass-bg);
+    border:1px solid var(--glass-border);
     border-radius:4px;
     padding:20px 20px 16px;
     position:relative;
+    box-shadow: var(--glass-shadow);
     transition:box-shadow .15s, transform .15s;
   }
-  .card:hover{ box-shadow:0 10px 24px -16px rgba(27,42,61,0.4); }
+  .card:hover{ box-shadow:0 10px 24px -16px rgba(27,42,61,0.4), inset 0 1px 0 rgba(255,255,255,0.55); }
   .stamp{
     position:absolute; top:14px; right:14px;
     width:44px; height:44px;
@@ -248,39 +289,50 @@
   .kv{ margin-bottom:8px; }
   .kv .k{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--ink-soft); }
   .kv .v{ font-family:'IBM Plex Mono', monospace; font-size:14.5px; word-break:break-word; }
-  .card .notes{ font-size:12.5px; color:var(--ink-soft); margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-style:italic; }
+  .card .notes{ font-size:12.5px; color:var(--ink-soft); margin-top:10px; padding-top:10px; border-top:1px solid var(--glass-border); font-style:italic; }
   .card .actions{ display:flex; gap:8px; margin-top:14px; }
   .card .actions button{
     flex:1; font-size:12px; padding:7px; border-radius:2px;
-    border:1px solid var(--line); background:var(--paper);
+    border:1px solid var(--glass-border); background:var(--glass-bg);
   }
   .card .actions button:hover{ border-color:var(--brass); }
   .card .actions .del:hover{ border-color:var(--rust); color:var(--rust); }
 
   .empty{
     text-align:center; padding:60px 20px; color:var(--ink-soft);
-    border:1px dashed var(--line); border-radius:4px;
+    border:1px dashed var(--glass-border); border-radius:4px;
+    background:var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
   }
   .empty .display{ font-size:20px; color:var(--ink); margin-bottom:6px; }
 
   /* modal */
   .overlay{
-    display:none; position:fixed; inset:0; background:rgba(27,42,61,0.5);
+    display:none; position:fixed; inset:0;
+    background:rgba(27,42,61,0.42);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     align-items:center; justify-content:center; padding:20px; z-index:50;
   }
   .modal{
-    background:var(--card); border-radius:4px; width:100%; max-width:520px;
+    background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:4px;
+    width:100%; max-width:520px;
     max-height:88vh; overflow-y:auto; padding:28px;
-    box-shadow:0 30px 60px -20px rgba(0,0,0,0.4);
+    box-shadow: var(--glass-shadow), 0 30px 60px -20px rgba(0,0,0,0.4);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
   }
   .modal h2{ font-size:20px; margin:0 0 20px; }
   .rowfield{ display:flex; gap:8px; margin-bottom:10px; }
-  .rowfield input{ flex:1; padding:9px 10px; border:1px solid var(--line); border-radius:2px; background:var(--paper); font-size:14px; }
+  .rowfield input{ flex:1; padding:9px 10px; border:1px solid var(--glass-border); border-radius:2px;
+    background: color-mix(in srgb, var(--card) 70%, transparent); font-size:14px; }
   .rowfield input.klabel{ flex:0 0 40%; }
-  .rowfield button{ background:none; border:1px solid var(--line); border-radius:2px; padding:0 12px; color:var(--rust); }
+  .rowfield button{ background:none; border:1px solid var(--glass-border); border-radius:2px; padding:0 12px; color:var(--rust); }
   .addfield{ background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft); padding:8px 14px; border-radius:2px; font-size:13px; margin:4px 0 18px; }
   .addfield:hover{ border-color:var(--brass); color:var(--brass-deep); }
-  .modal textarea{ width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:2px; background:var(--paper); font-size:14px; min-height:70px; resize:vertical; }
+  .modal textarea{ width:100%; padding:10px 12px; border:1px solid var(--glass-border); border-radius:2px;
+    background: color-mix(in srgb, var(--card) 70%, transparent); font-size:14px; min-height:70px; resize:vertical; }
   .modalfoot{ display:flex; gap:10px; margin-top:22px; }
   .modalfoot .btn{ width:auto; flex:1; }
 
@@ -289,6 +341,20 @@
   @media (max-width:600px){
     .topbar{ padding:14px 16px; }
     .layout{ padding:18px; }
+  }
+
+  /* Where backdrop-filter is unsupported the translucent surfaces would sit on
+     raw gradient with no frosting, which hurts legibility of the mono values.
+     Fall back to the opaque card colour. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+    :root{
+      --glass-bg: var(--card);
+      --glass-strong: var(--card);
+      --glass-border: var(--line);
+    }
+    .cover, .btn-outline, .filepick, .empty, .modal, .cattab{
+      backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
   }
 </style>
 </head>
