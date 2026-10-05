@@ -38,6 +38,12 @@ and low-key — a private numbers vault should read as secure and discreet, not
 decorative. The glass surface treatment is shared with the RACK project, so the
 two apps feel like a family.
 
+The colour blooms behind the glass drift with the pointer and float on their own
+when it goes still. They deliberately stop tracking over text fields and while a
+record modal is open — a moving backdrop behind something you are typing into or
+reading costs more than it adds — and they hold still entirely under
+`prefers-reduced-motion`.
+
 ## Using it
 
 1. **Start a new vault** — give it a name and set a password (minimum 8 characters).

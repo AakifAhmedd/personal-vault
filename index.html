@@ -39,18 +39,15 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    /* glass needs colour behind it to refract: gold, cyan and violet blooms
-       over the midnight base, with the ledger dot-grid on top.
-       The base is background-color, NOT a final background-image layer: a
-       trailing colour layer invalidates the shorthand in Chrome and the
+    /* the ledger dot-grid sits directly on the base colour; the colour blooms
+       that used to live here now live in #bgFx so they can be moved on their
+       own. The base is background-color, NOT a final background-image layer:
+       a trailing colour layer invalidates the shorthand in Chrome and the
        gradients disappear with it. */
     background-color:var(--paper);
     background-image:
-      radial-gradient(60vmax 60vmax at 12% 6%, rgba(228,176,74,0.15), transparent 60%),
-      radial-gradient(55vmax 55vmax at 88% 16%, rgba(56,189,248,0.13), transparent 60%),
-      radial-gradient(62vmax 62vmax at 68% 96%, rgba(124,92,255,0.16), transparent 62%),
       radial-gradient(circle at 1px 1px, rgba(232,238,249,0.035) 1px, transparent 0);
-    background-size: auto, auto, auto, 22px 22px;
+    background-size: 22px 22px;
     background-attachment: fixed;
     color:var(--ink);
     font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -58,6 +55,36 @@
     line-height:1.55;
     min-height:100vh;
     -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- Animated colour blooms ----------
+     Three soft discs behind the glass, so there is colour to refract. The
+     script drives them with transform alone — no repaint, no reflow. Negative
+     z-index keeps them above the page background but below all content. */
+  #bgFx{
+    position:fixed; inset:0;
+    z-index:-1;
+    pointer-events:none;
+    overflow:hidden;
+  }
+  .blob{
+    position:absolute; top:0; left:0;
+    border-radius:50%;
+    will-change:transform;
+    /* the negative margin puts the disc's CENTRE on the origin, so a
+       translate3d(x,y) moves the centre to exactly (x,y) */
+  }
+  .blob--gold{
+    width:96vmax; height:96vmax; margin:-48vmax 0 0 -48vmax;
+    background:radial-gradient(circle closest-side, rgba(228,176,74,0.20), rgba(228,176,74,0.07) 46%, transparent 72%);
+  }
+  .blob--cyan{
+    width:88vmax; height:88vmax; margin:-44vmax 0 0 -44vmax;
+    background:radial-gradient(circle closest-side, rgba(56,189,248,0.18), rgba(56,189,248,0.06) 46%, transparent 72%);
+  }
+  .blob--violet{
+    width:104vmax; height:104vmax; margin:-52vmax 0 0 -52vmax;
+    background:radial-gradient(circle closest-side, rgba(124,92,255,0.22), rgba(124,92,255,0.07) 46%, transparent 72%);
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
   h1,h2,h3,.display{font-family:'Fraunces', serif; letter-spacing:-0.01em;}
@@ -502,6 +529,15 @@
 </style>
 </head>
 <body>
+
+<!-- Colour blooms behind the glass. Fixed and non-interactive; the script at
+     the foot of the page follows the pointer with these and lets them drift on
+     their own when it goes idle. -->
+<div id="bgFx" aria-hidden="true">
+  <div class="blob blob--gold"></div>
+  <div class="blob blob--cyan"></div>
+  <div class="blob blob--violet"></div>
+</div>
 
 <!-- ===================== LOCK SCREEN ===================== -->
 <div id="lockScreen">
@@ -1239,6 +1275,117 @@
       else if($("catOverlay").style.display === "flex") $("catOverlay").style.display = "none";
     }
   });
+
+  // ---------------- Background colour motion ----------------
+  // The three blooms behind the glass trail the pointer, then drift on their own
+  // once it stops. Two deliberate exclusions, both because a moving backdrop
+  // behind something you are reading or typing into costs more than it adds:
+  // text fields, and the record modal. While either is in play the blooms
+  // idle-drift instead of tracking.
+  (function backgroundMotion(){
+    const layer = document.getElementById("bgFx");
+    if(!layer) return;
+
+    // reduced motion means no motion: leave the discs on their CSS rest
+    // positions rather than animating anyway
+    if(window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    // hx/hy: rest position as a fraction of the viewport — the palette as it
+    //        looked before this layer existed.
+    // par:   how much of the pointer's offset a disc inherits. They differ, so
+    //        the discs separate with depth instead of moving as one block.
+    // ax/ay: idle drift amplitude. sx/sy: idle drift speed in radians per ms,
+    //        giving a ~90s cycle. ph: phase offset so they never line up.
+    const discs = [
+      { sel:".blob--gold",   hx:0.12, hy:0.06, par:0.34, ax:0.075, ay:0.055, sx:0.000071, sy:0.000053, ph:0.0 },
+      { sel:".blob--cyan",   hx:0.88, hy:0.16, par:0.16, ax:0.060, ay:0.080, sx:0.000053, sy:0.000083, ph:2.1 },
+      { sel:".blob--violet", hx:0.68, hy:0.96, par:0.24, ax:0.080, ay:0.060, sx:0.000089, sy:0.000041, ph:4.2 }
+    ].map(d => {
+      const el = layer.querySelector(d.sel);
+      return el ? Object.assign(d, {el:el, cx:0, cy:0}) : null;
+    }).filter(Boolean);
+    if(discs.length === 0) return;
+
+    const IDLE_MS = 1400;   // pointer stillness before the drift takes over
+    const EASE    = 0.055;  // per-frame lerp; this is what makes them trail
+
+    let vw = 0, vh = 0, unit = 0;
+    let px = null, py = null;   // last pointer position, null until it moves
+    let lastMove = 0;
+    let overField = false;
+    let raf = 0;
+
+    function measure(){
+      vw = window.innerWidth;
+      vh = window.innerHeight;
+      unit = Math.min(vw, vh);
+      // snap to rest positions, so a resize does not leave a disc trailing
+      // across a viewport that no longer exists
+      discs.forEach(d => { d.cx = d.hx * vw; d.cy = d.hy * vh; });
+      // and drop the pointer: after a resize it usually no longer refers to a
+      // position on screen, so chasing it would slide the discs off toward a
+      // coordinate that is gone. They settle to the idle drift instead, until
+      // the pointer genuinely moves again.
+      px = null;
+    }
+    measure();
+
+    // any of these open means the user is looking at a form, not the page
+    function busy(){
+      return ["entryOverlay","catOverlay","lightbox"].some(id => {
+        const el = document.getElementById(id);
+        return !!el && el.style.display === "flex";
+      });
+    }
+
+    window.addEventListener("resize", measure, {passive:true});
+
+    window.addEventListener("pointermove", (e) => {
+      px = e.clientX;
+      py = e.clientY;
+      lastMove = performance.now();
+      const t = e.target;
+      overField = !!(t && t.closest && t.closest("input, textarea, select, .overlay"));
+    }, {passive:true});
+
+    // pointer gone: left the window, or a touch device that never had one
+    document.addEventListener("pointerleave", () => { px = null; });
+
+    function frame(now){
+      const idle = (px === null) || (now - lastMove > IDLE_MS);
+      const follow = !idle && !overField && !busy();
+
+      const cx = vw / 2, cy = vh / 2;
+      for(const d of discs){
+        const hx = d.hx * vw, hy = d.hy * vh;
+        let tx, ty;
+        if(follow){
+          tx = hx + (px - cx) * d.par;
+          ty = hy + (py - cy) * d.par;
+        } else {
+          // idle: a slow Lissajous drift around the rest position
+          tx = hx + Math.sin(now * d.sx + d.ph) * d.ax * unit;
+          ty = hy + Math.cos(now * d.sy + d.ph) * d.ay * unit;
+        }
+        d.cx += (tx - d.cx) * EASE;
+        d.cy += (ty - d.cy) * EASE;
+        d.el.style.transform = "translate3d(" + d.cx.toFixed(1) + "px," + d.cy.toFixed(1) + "px,0)";
+      }
+      raf = requestAnimationFrame(frame);
+    }
+
+    // no point animating a hidden tab
+    document.addEventListener("visibilitychange", () => {
+      if(document.hidden){
+        if(raf) cancelAnimationFrame(raf);
+        raf = 0;
+      } else if(!raf){
+        raf = requestAnimationFrame(frame);
+      }
+    });
+
+    raf = requestAnimationFrame(frame);
+  })();
 
 })();
 </script>
