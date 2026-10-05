@@ -65,10 +65,13 @@ there rather than layering over it: two animated backdrops stacked would be
 muddy, and only one is ever drawn. Locking again brings the field back, carrying
 on from where it left off rather than restarting.
 
-Two changes from the original: the palette is the app's own, with each
-particle's hue breathing ±14° around its base instead of sweeping the whole
-colour wheel; and the field is drawn at ~55% scale and stretched, so the trails
-stay soft and a frame costs a fraction of full size.
+Two changes from the original: the palette is the app's own — a narrow
+analogous band from violet to cyan (~60°, rather than the app's full ~290°
+spread, which reads as confetti at this density), with the variety coming from
+lightness instead, every particle taking a shade between 12% and 78% so the field
+runs dark to light, and each hue breathing ±8° around its base rather than
+sweeping the whole colour wheel. And the field is drawn at ~55% scale and
+stretched, so the trails stay soft and a frame costs a fraction of full size.
 
 ## Using it
 

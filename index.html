@@ -1388,8 +1388,14 @@
     const K = 8, VISC = 0.4, STEP = 0.1;
     const ZOOM = 2.2;      // the original uses 1.6, but at that scale the whole
                            // field hides behind the cover card
-    const HUES = [38, 196, 258, 330, 218];          // gold, cyan, violet, rose, blue
-    const HUE_SWING = 14;    // degrees of breath either side of a particle's own
+    // Colour. A tight analogous band rather than the app's full spread: the
+    // five brand hues are ~290 degrees apart and read as confetti at this
+    // density. Violet through cyan is ~60 degrees, so the field reads as one
+    // material, and the variety comes from lightness instead — every particle
+    // takes a shade between LUM_MIN and LUM_MAX, dark to light.
+    const HUES = [258, 246, 234, 222, 210, 198];    // violet -> cyan
+    const LUM_MIN = 12, LUM_MAX = 78;
+    const HUE_SWING = 8;     // degrees of breath either side of a particle's own
                              // hue — bounded on purpose, see the note above
     const HUE_PERIOD = 220;  // frames per breath cycle, ~23s at 60fps
     const RENDER = 0.55;   // canvas is drawn at ~55% and stretched, so the trails
@@ -1413,8 +1419,8 @@
       const spot = grid[si];
       particles.push({
         hue: HUES[(Math.random() * HUES.length) | 0],
-        sat: 95,
-        lum: 25 + ((Math.random() * 40) | 0),
+        sat: 88,
+        lum: LUM_MIN + ((Math.random() * (LUM_MAX - LUM_MIN)) | 0),
         x:spot.x, y:spot.y, xLast:spot.x, yLast:spot.y,
         xSpeed:0, ySpeed:0, age:0, stuck:0, phase:Math.random() * Math.PI * 2,
         attr:si, old:si, dead:false
