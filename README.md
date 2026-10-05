@@ -77,10 +77,11 @@ pulled gently toward the nearest point of the ring. That makes the shape
 deterministic and leaves the spring, jitter and trails as they were.
 
 Two changes from the original: the palette is the app's own — a narrow
-analogous band from violet to cyan (~60°, rather than the app's full ~290°
-spread, which reads as confetti at this density), with the variety coming from
-lightness instead, every particle taking a shade between 12% and 78% so the field
-runs dark to light, and each hue breathing ±8° around its base rather than
+analogous band from red through amber to yellow (~60°, rather than the app's
+full ~290° spread, which reads as confetti at this density), so the field sits
+with the brass the rest of the app is built on, with the variety coming from
+lightness instead: every particle takes a shade between 10% and 88%, running
+from deep ember to near white. Each hue breathes ±8° around its base rather than
 sweeping the whole colour wheel. And the field is drawn at ~55% scale and
 stretched, so the trails stay soft and a frame costs a fraction of full size.
 

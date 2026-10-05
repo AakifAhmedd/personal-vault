@@ -1387,11 +1387,13 @@
                            // field hides behind the cover card
     // Colour. A tight analogous band rather than the app's full spread: the
     // five brand hues are ~290 degrees apart and read as confetti at this
-    // density. Violet through cyan is ~60 degrees, so the field reads as one
-    // material, and the variety comes from lightness instead — every particle
-    // takes a shade between LUM_MIN and LUM_MAX, dark to light.
-    const HUES = [258, 246, 234, 222, 210, 198];    // violet -> cyan
-    const LUM_MIN = 12, LUM_MAX = 78;
+    // density. Red through yellow is ~60 degrees, so the field reads as one
+    // material and sits with the brass the rest of the app is built on, and the
+    // variety comes from lightness instead — every particle takes a shade
+    // between LUM_MIN and LUM_MAX, so the field runs from deep ember to near
+    // white at the top end.
+    const HUES = [356, 6, 18, 30, 42, 54];           // red -> amber -> yellow
+    const LUM_MIN = 10, LUM_MAX = 88;
     const HUE_SWING = 8;     // degrees of breath either side of a particle's own
                              // hue — bounded on purpose, see the note above
     const HUE_PERIOD = 220;  // frames per breath cycle, ~23s at 60fps
