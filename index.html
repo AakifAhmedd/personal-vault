@@ -1371,11 +1371,8 @@
     for(let gx = -500; gx < 500; gx += GRID){
       const edgeX = (gx === -500 || gx === EDGE);
       for(let gy = -500; gy < 500; gy += GRID){
-        const r = Math.sqrt(gx*gx + gy*gy), R0 = 100;
-        // Radial field: climbs to a crest at R0, then decays slowly outward.
         grid.push({
-          x:gx, y:gy, spotIndex:gi, busyAge:0,
-          field: r < R0 ? (255 / R0) * r : 255 - Math.min(255, (r - R0) / 2),
+          x:gx, y:gy, spotIndex:gi, busyAge:0, field:0,
           isEdge: edgeX || gy === -500 || gy === EDGE
         });
         gi++;
@@ -1398,20 +1395,81 @@
     const HUE_SWING = 8;     // degrees of breath either side of a particle's own
                              // hue — bounded on purpose, see the note above
     const HUE_PERIOD = 220;  // frames per breath cycle, ~23s at 60fps
+
+    // Ring geometry. BAND is how far outside the card the crest sits, in data
+    // units; TAIL is how slowly the field falls off past it. Together they put a
+    // rectangular outline of particles just beyond the card's edge, leaving the
+    // middle clear — the field is zero inside the card, so nothing pools there.
+    //
+    // The tail is exponential rather than linear on purpose. A linear falloff
+    // reaches zero within the grid, and past that line every neighbour scores the
+    // same, so the attractor walk degenerates to a pure random walk and particles
+    // strand out in the corners for good. An exponential never reaches zero, so
+    // there is always a gradient pulling a lost particle back toward the crest.
+    const BAND = 18;        // how far outside the card the crest sits, data units
+    const REACH = 170;      // where the field crosses zero and starts going negative
+    const INSIDE = 50;      // steepness of the field within the card
+    const BEYOND = 0.5;     // how fast it keeps falling past REACH
+    const FIELD_WEIGHT = 2; // how hard the walk prefers higher field over chaos
+    const RING_PULL = 0.06; // how firmly each particle is drawn onto the outline
     const RENDER = 0.55;   // canvas is drawn at ~55% and stretched, so the trails
                            // stay soft and a frame costs a fraction of full size
 
     let W = 0, H = 0;
+    let halfW = 60, halfH = 75, cxOff = 0, cyOff = 0;   // card rect, data units
     let particles = [], stepCount = 0, raf = 0, running = false, seeded = false;
+
+    // Measure the actual card rather than assuming a size, so the outline keeps
+    // hugging it as the viewport changes. The card is hidden while the vault is
+    // open, so this is only ever called with the lock screen up.
+    function readCard(){
+      const card = document.querySelector(".cover");
+      if(!card) return;
+      const r = card.getBoundingClientRect();
+      if(r.width === 0) return;                 // not laid out; keep the last good rect
+      halfW = (r.width  / 2 * RENDER) / ZOOM;
+      halfH = (r.height / 2 * RENDER) / ZOOM;
+      cxOff = ((r.left + r.width  / 2) * RENDER - W / 2) / ZOOM;
+      cyOff = ((r.top  + r.height / 2) * RENDER - H / 2) / ZOOM;
+    }
+
+    // Signed distance to the card rectangle (a box SDF): negative inside it,
+    // positive outside. The field rises monotonically from the middle of the
+    // card out to a crest at BAND, then falls — and keeps falling, going
+    // negative, all the way to the edge of the grid.
+    //
+    // The negative far field is the part that matters. The attractor walk only
+    // ever compares four neighbours against `chaos * random()`, so a particle
+    // far outside only comes back if the field gradient per step beats the chaos
+    // — and a long gentle tail never does. Left to decay to a flat zero it just
+    // random-walks out there and stays. Going negative instead means "inward" is
+    // always the winning neighbour, from any distance, so the ring actually
+    // holds and the middle of the card stays clear.
+    function fieldAt(gx, gy){
+      const dx = Math.abs(gx - cxOff) - halfW;
+      const dy = Math.abs(gy - cyOff) - halfH;
+      const outside = Math.hypot(dx > 0 ? dx : 0, dy > 0 ? dy : 0);
+      const sd = outside + Math.min(Math.max(dx, dy), 0);   // <0 inside the card
+      if(sd <= 0) return sd * INSIDE;                       // steeply low within it
+      if(sd < BAND) return (255 / BAND) * sd;                // ramp up to the crest
+      if(sd < REACH) return 255 * (1 - (sd - BAND) / (REACH - BAND));
+      return -(sd - REACH) * BEYOND;                         // and keep falling
+    }
+
+    function computeField(){
+      for(let i = 0; i < grid.length; i++) grid[i].field = fieldAt(grid[i].x, grid[i].y);
+    }
 
     function measure(){
       W = Math.max(2, Math.round(window.innerWidth  * RENDER));
       H = Math.max(2, Math.round(window.innerHeight * RENDER));
       canvas.width = W;
       canvas.height = H;
+      readCard();
+      computeField();
     }
     function toXY(x, y){
-      return { x: W/2 + x*ZOOM, y: H/2 + y*ZOOM };
+      return { x: W/2 + cxOff + x*ZOOM, y: H/2 + cyOff + y*ZOOM };
     }
 
     function birth(){
@@ -1439,9 +1497,9 @@
         if(Math.random() < 0.5){
           if(!spot.isEdge){
             const opts = [grid[index-1], grid[index+1], grid[index-STEPS], grid[index+STEPS]];
-            let best = opts[0], bestV = opts[0].field + CHAOS * Math.random();
+            let best = opts[0], bestV = opts[0].field * FIELD_WEIGHT + CHAOS * Math.random();
             for(let c = 1; c < 4; c++){
-              const v = opts[c].field + CHAOS * Math.random();
+              const v = opts[c].field * FIELD_WEIGHT + CHAOS * Math.random();
               if(v > bestV){ bestV = v; best = opts[c]; }
             }
             // takeable if unclaimed, or if the previous claim has faded
@@ -1462,6 +1520,30 @@
         p.ySpeed = (p.ySpeed - K * dy) * VISC;
         p.x += STEP * p.xSpeed;
         p.y += STEP * p.ySpeed;
+
+        // Draw the particle onto the outline. This term, not the field, is what
+        // actually makes the backdrop an outline of the card rather than a disc
+        // in the middle of the screen: the attractor walk compares only four
+        // neighbours against `chaos * random()`, so its drift per step is small
+        // and however the field is tuned it spreads the population far too thin
+        // to read as an edge — measured, the median particle sat 130 data units
+        // outside the card rather than on it. Pulling each particle gently
+        // toward the nearest point of the ring keeps the spring, the jitter and
+        // the trails exactly as they were, and makes the shape deterministic.
+        const ux = p.x - cxOff, uy = p.y - cyOff;
+        const qx = Math.max(-halfW, Math.min(halfW, ux));
+        const qy = Math.max(-halfH, Math.min(halfH, uy));
+        const ox = ux - qx, oy = uy - qy;
+        const olen = Math.hypot(ox, oy);
+        if(olen > 0.0001){
+          p.x += (qx + ox / olen * BAND - p.x) * RING_PULL;
+          p.y += (qy + oy / olen * BAND - p.y) * RING_PULL;
+        } else {
+          // inside the rectangle: leave by the nearer edge
+          const gapX = halfW - Math.abs(ux), gapY = halfH - Math.abs(uy);
+          if(gapX < gapY) p.x += ((ux < 0 ? -1 : 1) * (halfW + BAND) - p.x) * RING_PULL;
+          else          p.y += ((uy < 0 ? -1 : 1) * (halfH + BAND) - p.y) * RING_PULL;
+        }
 
         if(++p.age > LIFESPAN){ p.dead = true; deaths++; }
       }

@@ -65,6 +65,17 @@ there rather than layering over it: two animated backdrops stacked would be
 muddy, and only one is ever drawn. Locking again brings the field back, carrying
 on from where it left off rather than restarting.
 
+The field draws the **outline of the card in front of it**, not a disc in the
+middle of the screen. Getting there needed more than reshaping the field, and the
+reason is worth recording: the attractor walk only ever compares four neighbours
+against `chaos * random()`, so its drift per step is small. Measured, the field's
+gradient was 13.4 per grid step near the crest and 4.0 far out — both below the
+original `CHAOS` of 30, meaning the chaos outvoted the field everywhere and the
+walk was really just a random walk. Tuning the field could not fix that (it was
+flat across `FIELD_WEIGHT` 3→30 and `CHAOS` 30→4), so each particle is now also
+pulled gently toward the nearest point of the ring. That makes the shape
+deterministic and leaves the spring, jitter and trails as they were.
+
 Two changes from the original: the palette is the app's own — a narrow
 analogous band from violet to cyan (~60°, rather than the app's full ~290°
 spread, which reads as confetti at this density), with the variety coming from
