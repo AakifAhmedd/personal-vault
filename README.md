@@ -38,11 +38,20 @@ and low-key — a private numbers vault should read as secure and discreet, not
 decorative. The glass surface treatment is shared with the RACK project, so the
 two apps feel like a family.
 
-The colour blooms behind the glass drift with the pointer and float on their own
-when it goes still. They deliberately stop tracking over text fields and while a
-record modal is open — a moving backdrop behind something you are typing into or
-reading costs more than it adds — and they hold still entirely under
-`prefers-reduced-motion`.
+Behind the glass is an animated mesh gradient, in the manner of the Jitter
+"Gradient Background" template: five soft colour nodes drifting around the dark
+base, each breathing its own hue, so the composition never quite repeats. It is
+drawn into a canvas about an eighth of the screen size and stretched to fill the
+view — the upscale does the blurring, so a frame costs a few thousand pixels of
+gradient fill rather than a full-screen repaint, and the nodes are laid down
+additively, as light on top of the page, so the ledger dot-grid still reads
+through the mesh.
+
+The mesh drifts with the pointer and floats on its own when it goes still. It
+deliberately stops tracking over text fields and while a record modal is open — a
+moving backdrop behind something you are typing into or reading costs more than
+it adds — and it holds still entirely under `prefers-reduced-motion`. If the
+canvas cannot be created at all, a static gradient stands in.
 
 ## Using it
 

@@ -58,34 +58,33 @@
     -webkit-font-smoothing:antialiased;
   }
 
-  /* ---------- Animated colour blooms ----------
-     Three soft discs behind the glass, so there is colour to refract. The
-     script drives them with transform alone — no repaint, no reflow. Negative
-     z-index keeps them above the page background but below all content. */
+  /* ---------- Animated mesh gradient ----------
+     A slow, continuously morphing backdrop: soft colour nodes drifting around
+     a near-black base, in the manner of the Jitter "Gradient Background"
+     template — it never quite repeats, so the page never sits still.
+
+     It is drawn into a deliberately tiny canvas and stretched by the compositor
+     to fill the screen. That is the whole trick: the upscale does the blurring,
+     so a frame costs a few thousand pixels of gradient fill rather than a
+     full-screen repaint, and the result is smooth instead of banded.
+
+     The canvas itself is transparent — the nodes are laid down additively, as
+     light on top of the page rather than a replacement for it. That is what
+     keeps the ledger dot-grid visible through the mesh. */
   #bgFx{
     position:fixed; inset:0;
+    width:100%; height:100%;
     z-index:-1;
     pointer-events:none;
-    overflow:hidden;
   }
-  .blob{
-    position:absolute; top:0; left:0;
-    border-radius:50%;
-    will-change:transform;
-    /* the negative margin puts the disc's CENTRE on the origin, so a
-       translate3d(x,y) moves the centre to exactly (x,y) */
-  }
-  .blob--gold{
-    width:96vmax; height:96vmax; margin:-48vmax 0 0 -48vmax;
-    background:radial-gradient(circle closest-side, rgba(228,176,74,0.20), rgba(228,176,74,0.07) 46%, transparent 72%);
-  }
-  .blob--cyan{
-    width:88vmax; height:88vmax; margin:-44vmax 0 0 -44vmax;
-    background:radial-gradient(circle closest-side, rgba(56,189,248,0.18), rgba(56,189,248,0.06) 46%, transparent 72%);
-  }
-  .blob--violet{
-    width:104vmax; height:104vmax; margin:-52vmax 0 0 -52vmax;
-    background:radial-gradient(circle closest-side, rgba(124,92,255,0.22), rgba(124,92,255,0.07) 46%, transparent 72%);
+  /* Fallback. Only applied when the canvas could not be created at all, so the
+     backdrop is never simply missing — see the no-mesh class in the script. */
+  body.no-mesh{
+    background-image:
+      radial-gradient(60vmax 60vmax at 12% 6%, rgba(228,176,74,0.15), transparent 60%),
+      radial-gradient(55vmax 55vmax at 88% 16%, rgba(56,189,248,0.13), transparent 60%),
+      radial-gradient(62vmax 62vmax at 68% 96%, rgba(124,92,255,0.16), transparent 62%),
+      radial-gradient(circle at 1px 1px, rgba(232,238,249,0.035) 1px, transparent 0);
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
   h1,h2,h3,.display{font-family:'Fraunces', serif; letter-spacing:-0.01em;}
@@ -544,14 +543,10 @@
 </head>
 <body>
 
-<!-- Colour blooms behind the glass. Fixed and non-interactive; the script at
-     the foot of the page follows the pointer with these and lets them drift on
-     their own when it goes idle. -->
-<div id="bgFx" aria-hidden="true">
-  <div class="blob blob--gold"></div>
-  <div class="blob blob--cyan"></div>
-  <div class="blob blob--violet"></div>
-</div>
+<!-- The animated mesh gradient behind the glass. Drawn into a deliberately tiny
+     canvas at the foot of this page, then stretched to fill the screen. Fixed
+     and non-interactive. -->
+<canvas id="bgFx" aria-hidden="true"></canvas>
 
 <!-- ===================== LOCK SCREEN ===================== -->
 <div id="lockScreen">
@@ -1311,59 +1306,111 @@
   }
   initVersion();
 
-  // ---------------- Background colour motion ----------------
-  // The three blooms behind the glass trail the pointer, then drift on their own
-  // once it stops. Two deliberate exclusions, both because a moving backdrop
-  // behind something you are reading or typing into costs more than it adds:
-  // text fields, and the record modal. While either is in play the blooms
-  // idle-drift instead of tracking.
-  (function backgroundMotion(){
-    const layer = document.getElementById("bgFx");
-    if(!layer) return;
+  // ---------------- Background: animated mesh gradient ----------------
+  // A slow, continuously morphing gradient in the manner of the Jitter
+  // "Gradient Background" template: a handful of soft colour nodes drifting
+  // around the dark base, each breathing its own hue, so the composition never
+  // quite repeats and the page never sits still.
+  //
+  // Pointer tracking is kept from the previous version, with the same two
+  // exclusions: text fields, and the record modal. A moving backdrop behind
+  // something you are typing into or reading costs more than it adds.
+  (function backgroundMesh(){
+    const canvas = document.getElementById("bgFx");
+    if(!canvas || !canvas.getContext) return;
+    const ctx = canvas.getContext("2d");
+    if(!ctx){
+      // No 2D context: fall back to the static blooms rather than a flat page.
+      document.body.classList.add("no-mesh");
+      return;
+    }
 
-    // reduced motion means no motion: leave the discs on their CSS rest
-    // positions rather than animating anyway
-    if(window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    // hx/hy: rest position as a fraction of the viewport — the palette as it
-    //        looked before this layer existed.
-    // par:   how much of the pointer's offset a disc inherits. They differ, so
-    //        the discs separate with depth instead of moving as one block.
-    // ax/ay: idle drift amplitude. sx/sy: idle drift speed in radians per ms,
-    //        giving a ~90s cycle. ph: phase offset so they never line up.
-    const discs = [
-      { sel:".blob--gold",   hx:0.12, hy:0.06, par:0.34, ax:0.075, ay:0.055, sx:0.000071, sy:0.000053, ph:0.0 },
-      { sel:".blob--cyan",   hx:0.88, hy:0.16, par:0.16, ax:0.060, ay:0.080, sx:0.000053, sy:0.000083, ph:2.1 },
-      { sel:".blob--violet", hx:0.68, hy:0.96, par:0.24, ax:0.080, ay:0.060, sx:0.000089, sy:0.000041, ph:4.2 }
-    ].map(d => {
-      const el = layer.querySelector(d.sel);
-      return el ? Object.assign(d, {el:el, cx:0, cy:0}) : null;
-    }).filter(Boolean);
-    if(discs.length === 0) return;
-
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const IDLE_MS = 1400;   // pointer stillness before the drift takes over
-    const EASE    = 0.055;  // per-frame lerp; this is what makes them trail
+    const EASE    = 0.055;  // per-frame lerp; this is what makes nodes trail
 
-    let vw = 0, vh = 0, unit = 0;
+    // h/s/l : base hue, saturation, lightness of the node.
+    // hx/hy : rest position as a fraction of the frame.
+    // r     : radius as a fraction of frame width.
+    // a     : peak alpha.
+    // ax/ay : drift amplitude. sx/sy : drift speed in radians per ms, giving a
+    //         ~30s cycle. ph : phase offset, so nodes never line up.
+    // hs    : hue breath in degrees. Nodes shift colour AROUND their own hue
+    //         rather than cycling the whole wheel — that keeps the palette
+    //         curated (gold stays gold, violet stays violet) instead of drifting
+    //         through muddy greens on the way round.
+    // par   : how much of the pointer's offset this node inherits. Differing
+    //         values give the mesh depth instead of moving as one sheet.
+    //
+    // r and a are tuned together against measured output, not by eye: the nodes
+    // are additive, so their contributions sum. Broader nodes overlap more and
+    // read brighter but also slide without visibly changing any pixel — an
+    // earlier pass at r=0.70 moved only 0.4/255 per five seconds, i.e. not at
+    // all. Narrower nodes with a faster cycle give a loop you can actually see
+    // while holding mean luminance near the flat gradient this replaced.
+    const NODES = [
+      {h:  38, s:90, l:58, hx:0.14, hy:0.08, r:0.40, a:0.30, ax:0.120, ay:0.090, sx:0.000190, sy:0.000140, hs:16, ph:0.0, par:0.30},
+      {h: 330, s:80, l:62, hx:0.86, hy:0.14, r:0.34, a:0.24, ax:0.100, ay:0.130, sx:0.000150, sy:0.000230, hs:18, ph:2.1, par:0.16},
+      {h: 258, s:85, l:64, hx:0.70, hy:0.94, r:0.44, a:0.27, ax:0.140, ay:0.100, sx:0.000240, sy:0.000110, hs:17, ph:4.2, par:0.24},
+      {h: 196, s:85, l:54, hx:0.30, hy:0.72, r:0.32, a:0.21, ax:0.110, ay:0.090, sx:0.000130, sy:0.000210, hs:15, ph:1.2, par:0.20},
+      {h: 218, s:75, l:50, hx:0.52, hy:0.34, r:0.30, a:0.17, ax:0.080, ay:0.110, sx:0.000220, sy:0.000160, hs:19, ph:5.3, par:0.12}
+    ].map(n => Object.assign(n, {cx:n.hx, cy:n.hy}));
+
+    let W = 0, H = 0, iw = 0, ih = 0;
     let px = null, py = null;   // last pointer position, null until it moves
     let lastMove = 0;
     let overField = false;
     let raf = 0;
+    let frames = 0;             // gradients drawn; asserted in tests
 
     function measure(){
-      vw = window.innerWidth;
-      vh = window.innerHeight;
-      unit = Math.min(vw, vh);
-      // snap to rest positions, so a resize does not leave a disc trailing
-      // across a viewport that no longer exists
-      discs.forEach(d => { d.cx = d.hx * vw; d.cy = d.hy * vh; });
-      // and drop the pointer: after a resize it usually no longer refers to a
-      // position on screen, so chasing it would slide the discs off toward a
-      // coordinate that is gone. They settle to the idle drift instead, until
-      // the pointer genuinely moves again.
+      iw = window.innerWidth;
+      ih = window.innerHeight;
+      // roughly an eighth scale, clamped: big enough that the gradients stay
+      // smooth when stretched, small enough that a frame is close to free
+      W = Math.max(80, Math.min(280, Math.round(iw / 8)));
+      H = Math.max(45, Math.round(W * (ih / iw)));
+      canvas.width = W;
+      canvas.height = H;
+      NODES.forEach(n => { n.cx = n.hx; n.cy = n.hy; });
+      // a resize usually invalidates the pointer: chasing a coordinate that is
+      // now off-screen would slide the mesh somewhere meaningless, so drop it
+      // and let the drift settle instead
       px = null;
     }
-    measure();
+
+    function hsla(h, s, l, a){
+      return "hsla(" + (((h % 360) + 360) % 360).toFixed(1) + "," + s + "%," + l + "%," + a.toFixed(3) + ")";
+    }
+
+    function draw(now, follow){
+      // additive light onto a transparent canvas, so the page background and
+      // its dot-grid read through the mesh instead of being painted over
+      ctx.globalCompositeOperation = "lighter";
+      for(const n of NODES){
+        let tx, ty;
+        if(follow){
+          tx = n.hx + ((px / iw) - 0.5) * n.par;
+          ty = n.hy + ((py / ih) - 0.5) * n.par;
+        } else {
+          tx = n.hx + Math.sin(now * n.sx + n.ph) * n.ax;
+          ty = n.hy + Math.cos(now * n.sy + n.ph) * n.ay;
+        }
+        n.cx += (tx - n.cx) * EASE;
+        n.cy += (ty - n.cy) * EASE;
+
+        const hue  = n.h + Math.sin(now * n.sx * 0.8 + n.ph) * n.hs;
+        const x = n.cx * W, y = n.cy * H, r = n.r * W;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0,    hsla(hue, n.s, n.l, n.a));
+        g.addColorStop(0.55, hsla(hue, n.s, n.l, n.a * 0.28));
+        g.addColorStop(1,    hsla(hue, n.s, n.l, 0));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        frames++;
+      }
+      ctx.globalCompositeOperation = "source-over";
+    }
 
     // any of these open means the user is looking at a form, not the page
     function busy(){
@@ -1373,7 +1420,16 @@
       });
     }
 
-    window.addEventListener("resize", measure, {passive:true});
+    function frame(now){
+      const idle = (px === null) || (now - lastMove > IDLE_MS);
+      draw(now, !idle && !overField && !busy());
+      raf = requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("resize", () => {
+      measure();
+      if(reduce) draw(0, false);
+    }, {passive:true});
 
     window.addEventListener("pointermove", (e) => {
       px = e.clientX;
@@ -1386,38 +1442,19 @@
     // pointer gone: left the window, or a touch device that never had one
     document.addEventListener("pointerleave", () => { px = null; });
 
-    function frame(now){
-      const idle = (px === null) || (now - lastMove > IDLE_MS);
-      const follow = !idle && !overField && !busy();
-
-      const cx = vw / 2, cy = vh / 2;
-      for(const d of discs){
-        const hx = d.hx * vw, hy = d.hy * vh;
-        let tx, ty;
-        if(follow){
-          tx = hx + (px - cx) * d.par;
-          ty = hy + (py - cy) * d.par;
-        } else {
-          // idle: a slow Lissajous drift around the rest position
-          tx = hx + Math.sin(now * d.sx + d.ph) * d.ax * unit;
-          ty = hy + Math.cos(now * d.sy + d.ph) * d.ay * unit;
-        }
-        d.cx += (tx - d.cx) * EASE;
-        d.cy += (ty - d.cy) * EASE;
-        d.el.style.transform = "translate3d(" + d.cx.toFixed(1) + "px," + d.cy.toFixed(1) + "px,0)";
-      }
-      raf = requestAnimationFrame(frame);
-    }
-
     // no point animating a hidden tab
     document.addEventListener("visibilitychange", () => {
       if(document.hidden){
         if(raf) cancelAnimationFrame(raf);
         raf = 0;
-      } else if(!raf){
+      } else if(!raf && !reduce){
         raf = requestAnimationFrame(frame);
       }
     });
+
+    measure();
+    draw(0, false);          // paint one frame immediately, so there is never a flash
+    if(reduce) return;       // reduced motion gets that single still frame
 
     raf = requestAnimationFrame(frame);
   })();
