@@ -77,6 +77,20 @@
     z-index:-1;
     pointer-events:none;
   }
+  /* ---------- Add-vault particle field ----------
+     A second backdrop, used only on the create-vault screen. It REPLACES the
+     mesh while that view is open rather than layering over it: two animated
+     backdrops stacked would be muddy, and this way only one is ever drawn. */
+  #fxParticles{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    z-index:-1;
+    pointer-events:none;
+    display:none;
+  }
+  #fxParticles.on{ display:block; }
+  body.particle-fx #bgFx{ display:none; }
+
   /* Fallback. Only applied when the canvas could not be created at all, so the
      backdrop is never simply missing — see the no-mesh class in the script. */
   body.no-mesh{
@@ -548,6 +562,10 @@
      and non-interactive. -->
 <canvas id="bgFx" aria-hidden="true"></canvas>
 
+<!-- The add-vault particle field. Shown only while the create-vault view is
+     open, where it replaces the mesh rather than layering over it. -->
+<canvas id="fxParticles" aria-hidden="true"></canvas>
+
 <!-- ===================== LOCK SCREEN ===================== -->
 <div id="lockScreen">
   <div class="cover">
@@ -777,9 +795,9 @@
   // ---------------- Lock screen flow ----------------
   let pendingOpenFileText = null;
 
-  $("btnNewVault").onclick = () => { $("chooserView").style.display="none"; $("createView").style.display="block"; };
+  $("btnNewVault").onclick = () => { $("chooserView").style.display="none"; $("createView").style.display="block"; startCreateFx(); };
   $("btnOpenVault").onclick = () => { $("chooserView").style.display="none"; $("openView").style.display="block"; };
-  $("btnBackFromCreate").onclick = () => { $("createView").style.display="none"; $("chooserView").style.display="block"; $("createError").textContent=""; };
+  $("btnBackFromCreate").onclick = () => { $("createView").style.display="none"; $("chooserView").style.display="block"; $("createError").textContent=""; stopCreateFx(); };
   $("btnBackFromOpen").onclick = () => { $("openView").style.display="none"; $("chooserView").style.display="block"; $("openError").textContent=""; };
 
   $("filePickArea").onclick = () => $("fileInput").click();
@@ -826,6 +844,7 @@
   };
 
   function enterApp(){
+    stopCreateFx();
     document.getElementById("lockScreen").style.display = "none";
     document.getElementById("app").style.display = "block";
     activeCategoryId = vault.categories[0] ? vault.categories[0].id : null;
@@ -877,6 +896,7 @@
   };
 
   $("btnLock").onclick = () => {
+    stopCreateFx();
     if(isDirty && !confirm("You have unsaved changes. Lock anyway and lose them?")) return;
     vault = null;
     derivedKeyCache = null;
@@ -1306,6 +1326,235 @@
   }
   initVersion();
 
+  // ---------------- Add-vault page: Spipa particle field ----------------
+  // Adapted from "Spipa circle" by Alex Andrix
+  // (codepen.io/alexandrix/pen/oQOvYp). Each particle is spring-coupled to an
+  // attractor spot on a coarse grid; the attractor wanders toward whichever
+  // neighbouring spot has the highest radial field value, particles die when
+  // they get stuck or too old, and the fading fill is what draws the trails.
+  // The original's lodash helpers are inlined here — this app has no deps.
+  //
+  // Two deliberate departures:
+  //   - the palette is this app's, and the hue only BREATHES around each
+  //     particle's own base rather than sweeping the whole colour wheel the way
+  //     the original's `hue + stepCount/30` does. On a dark vault an unbounded
+  //     rotation turns into a rainbow that belongs to nothing. HUES and HUE_SWING
+  //     are the only lines to touch for that.
+  //   - it runs only while the create-vault view is open, and takes the place of
+  //     the mesh there instead of sitting on top of it.
+  let createFx = null;
+
+  function startCreateFx(){
+    if(!createFx) createFx = buildCreateFx();
+    if(createFx) createFx.start();
+  }
+  function stopCreateFx(){
+    if(createFx) createFx.stop();
+  }
+
+  function buildCreateFx(){
+    const canvas = document.getElementById("fxParticles");
+    if(!canvas || !canvas.getContext) return null;
+    const ctx = canvas.getContext("2d");
+    if(!ctx) return null;
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // --- grid of candidate attractor spots, -500..500 in steps of GRID ---
+    const GRID = 8;
+    const STEPS = Math.floor(1000 / GRID);          // 125 per axis
+    const EDGE = -500 + GRID * (STEPS - 1);
+    const grid = [];
+    let gi = 0;
+    for(let gx = -500; gx < 500; gx += GRID){
+      const edgeX = (gx === -500 || gx === EDGE);
+      for(let gy = -500; gy < 500; gy += GRID){
+        const r = Math.sqrt(gx*gx + gy*gy), R0 = 100;
+        // Radial field: climbs to a crest at R0, then decays slowly outward.
+        grid.push({
+          x:gx, y:gy, spotIndex:gi, busyAge:0,
+          field: r < R0 ? (255 / R0) * r : 255 - Math.min(255, (r - R0) / 2),
+          isEdge: edgeX || gy === -500 || gy === EDGE
+        });
+        gi++;
+      }
+    }
+    const GRID_MAX = gi;
+
+    const LIFESPAN = 1000, MAX_POP = 300, BIRTH_FREQ = 2;
+    const CHAOS = 30;      // randomness in choosing which way to drift
+    const K = 8, VISC = 0.4, STEP = 0.1;
+    const ZOOM = 2.2;      // the original uses 1.6, but at that scale the whole
+                           // field hides behind the create card
+    const HUES = [38, 196, 258, 330, 218];          // gold, cyan, violet, rose, blue
+    const HUE_SWING = 14;    // degrees of breath either side of a particle's own
+                             // hue — bounded on purpose, see the note above
+    const HUE_PERIOD = 220;  // frames per breath cycle, ~23s at 60fps
+    const RENDER = 0.55;   // canvas is drawn at ~55% and stretched, so the trails
+                           // stay soft and a frame costs a fraction of full size
+
+    let W = 0, H = 0;
+    let particles = [], stepCount = 0, raf = 0, running = false, seeded = false;
+
+    function measure(){
+      W = Math.max(2, Math.round(window.innerWidth  * RENDER));
+      H = Math.max(2, Math.round(window.innerHeight * RENDER));
+      canvas.width = W;
+      canvas.height = H;
+    }
+    function toXY(x, y){
+      return { x: W/2 + x*ZOOM, y: H/2 + y*ZOOM };
+    }
+
+    function birth(){
+      const si = (Math.random() * GRID_MAX) | 0;
+      const spot = grid[si];
+      particles.push({
+        hue: HUES[(Math.random() * HUES.length) | 0],
+        sat: 95,
+        lum: 25 + ((Math.random() * 40) | 0),
+        x:spot.x, y:spot.y, xLast:spot.x, yLast:spot.y,
+        xSpeed:0, ySpeed:0, age:0, stuck:0, phase:Math.random() * Math.PI * 2,
+        attr:si, old:si, dead:false
+      });
+    }
+
+    function move(){
+      let deaths = 0;
+      for(let i = 0; i < particles.length; i++){
+        const p = particles[i];
+        p.xLast = p.x; p.yLast = p.y;
+
+        let index = p.attr;
+        let spot = grid[index];
+
+        if(Math.random() < 0.5){
+          if(!spot.isEdge){
+            const opts = [grid[index-1], grid[index+1], grid[index-STEPS], grid[index+STEPS]];
+            let best = opts[0], bestV = opts[0].field + CHAOS * Math.random();
+            for(let c = 1; c < 4; c++){
+              const v = opts[c].field + CHAOS * Math.random();
+              if(v > bestV){ bestV = v; best = opts[c]; }
+            }
+            // takeable if unclaimed, or if the previous claim has faded
+            if(best.busyAge === 0 || best.busyAge > 15){
+              p.stuck = 0;
+              p.old = index;
+              p.attr = best.spotIndex;
+              spot = best;
+              spot.busyAge = 1;
+            } else p.stuck++;
+          } else p.stuck++;
+        } else p.stuck++;
+
+        if(p.stuck >= 10){ p.dead = true; deaths++; continue; }
+
+        const dx = p.x - spot.x, dy = p.y - spot.y;
+        p.xSpeed = (p.xSpeed - K * dx) * VISC;
+        p.ySpeed = (p.ySpeed - K * dy) * VISC;
+        p.x += STEP * p.xSpeed;
+        p.y += STEP * p.ySpeed;
+
+        if(++p.age > LIFESPAN){ p.dead = true; deaths++; }
+      }
+      if(deaths) particles = particles.filter(p => !p.dead);
+    }
+
+    function stepOnce(){
+      stepCount++;
+      for(let i = 0; i < grid.length; i++){
+        const s = grid[i];
+        if(s.busyAge > 0) s.busyAge++;
+      }
+      if(stepCount % BIRTH_FREQ === 0 && particles.length + 1 < MAX_POP) birth();
+      move();
+    }
+
+    function draw(){
+      // Fade rather than clear: that is what produces the trails. destination-out
+      // instead of an opaque fill keeps the canvas transparent, so the page
+      // background and its dot-grid still read through the field.
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.fillStyle = "rgba(0,0,0,0.09)";
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.globalCompositeOperation = "lighter";
+      ctx.lineWidth = 1.4;
+      for(let i = 0; i < particles.length; i++){
+        const p = particles[i];
+        const hue = p.hue + HUE_SWING * Math.sin(stepCount / HUE_PERIOD + p.phase);
+        const col = "hsla(" + hue.toFixed(1) + "," + p.sat + "%," + p.lum + "%,1)";
+        const last = toXY(p.xLast, p.yLast), now = toXY(p.x, p.y);
+        const a = toXY(grid[p.attr].x,  grid[p.attr].y);
+        const o = toXY(grid[p.old].x,  grid[p.old].y);
+
+        ctx.strokeStyle = col;
+        ctx.fillStyle = col;
+
+        // the trail
+        ctx.beginPath();
+        ctx.moveTo(last.x, last.y);
+        ctx.lineTo(now.x, now.y);
+        ctx.stroke();
+
+        // the attractor: where it was, and where it now is
+        ctx.beginPath();
+        ctx.moveTo(o.x, o.y);
+        ctx.lineTo(a.x, a.y);
+        ctx.arc(a.x, a.y, 1.4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    function frame(){
+      stepOnce();
+      draw();
+      raf = requestAnimationFrame(frame);
+    }
+
+    function onResize(){
+      if(!running) return;
+      measure();
+    }
+    window.addEventListener("resize", onResize, {passive:true});
+
+    document.addEventListener("visibilitychange", () => {
+      if(document.hidden){
+        if(raf) cancelAnimationFrame(raf);
+        raf = 0;
+      } else if(running && !raf && !reduce){
+        raf = requestAnimationFrame(frame);
+      }
+    });
+
+    return {
+      start(){
+        measure();
+        // Seed on first open: at one birth every other step the field would
+        // otherwise take ten seconds to fill.
+        if(!seeded){
+          seeded = true;
+          for(let i = 0; i < 220; i++) stepOnce();
+        }
+        canvas.classList.add("on");
+        document.body.classList.add("particle-fx");
+        if(reduce){ draw(); return; }     // one still frame, no animation
+        if(running) return;
+        running = true;
+        raf = requestAnimationFrame(frame);
+      },
+      stop(){
+        canvas.classList.remove("on");
+        document.body.classList.remove("particle-fx");
+        running = false;
+        if(raf) cancelAnimationFrame(raf);
+        raf = 0;
+      }
+    };
+  }
+
   // ---------------- Background: animated mesh gradient ----------------
   // A slow, continuously morphing gradient in the manner of the Jitter
   // "Gradient Background" template: a handful of soft colour nodes drifting
@@ -1430,8 +1679,13 @@
     }
 
     function frame(now){
-      const idle = (px === null) || (now - lastMove > IDLE_MS);
-      draw(now, !idle && !overField && !busy());
+      // While the add-vault particle field is up it covers this canvas, so skip
+      // the work. Checked via the class rather than offsetParent: that would
+      // force a layout every frame.
+      if(!document.body.classList.contains("particle-fx")){
+        const idle = (px === null) || (now - lastMove > IDLE_MS);
+        draw(now, !idle && !overField && !busy());
+      }
       raf = requestAnimationFrame(frame);
     }
 
