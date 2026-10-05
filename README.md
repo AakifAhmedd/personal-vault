@@ -119,10 +119,11 @@ full-size, and press Escape or click outside to close.
 - All of this uses the browser's built-in Web Crypto API. There is no key
   derivation library, no external dependency, and no code path that transmits
   anything.
-- The only network requests the page makes are for the Google Fonts stylesheet
-  and font files, which happen before you enter a password and carry no vault
-  data. Everything else — encryption, decryption, file reading, file writing —
-  is local.
+- The only network requests the page makes are for the Google Fonts stylesheet,
+  the font files, and `VERSION` — the version number shown on the lock screen
+  and in the header. All of them happen before you enter a password and carry
+  no vault data. Everything else — encryption, decryption, file reading, file
+  writing — is local.
 
 **There is no password reset.** A lost password means a lost vault, and a lost
 file cannot be recovered from anywhere else. Keep a backup copy of the `.vault`
@@ -156,7 +157,11 @@ that choice:
 
 The current version lives in `VERSION` at the repo root and follows
 `MAJOR.MINOR.PATCH`. Every commit on `main` bumps it, in the same commit as the
-change. The full rules are in [`VERSIONING.md`](VERSIONING.md).
+change. The app reads that file at load and shows it as a `v<number>` badge on
+the lock screen and in the header, so bumping the file is all that is needed —
+the number is never written into `index.html`. Opened straight off the
+filesystem the badge stays blank, because a browser cannot fetch a sibling file
+from `file://`. The full rules are in [`VERSIONING.md`](VERSIONING.md).
 
 ## Files
 

@@ -5,8 +5,10 @@ Applies to every developer and every AI/LLM that changes this repo. Follow it ex
 ## Single source of truth
 
 The file `VERSION` at the repo root. One line, `MAJOR.MINOR.PATCH`, nothing else
-(no "v" prefix, no comments, no trailing text). Do not write the version number
-anywhere else (README, code, notes); refer to the file instead.
+(no "v" prefix, no comments, no trailing text). The app reads it at load and
+shows it as a `v<number>` badge on the lock screen and in the header. Do not
+write the version number anywhere else (README, code, notes); refer to the file
+instead.
 
 ## Rule: every commit bumps the version
 
