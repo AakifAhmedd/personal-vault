@@ -77,10 +77,11 @@
     z-index:-1;
     pointer-events:none;
   }
-  /* ---------- Add-vault particle field ----------
-     A second backdrop, used only on the create-vault screen. It REPLACES the
-     mesh while that view is open rather than layering over it: two animated
-     backdrops stacked would be muddy, and this way only one is ever drawn. */
+  /* ---------- Lock-screen particle field ----------
+     A second backdrop, used only while the lock screen is up. It REPLACES the
+     mesh there rather than layering over it: two animated backdrops stacked
+     would be muddy, and this way only one is ever drawn. Inside the app it is
+     the mesh you see; out here it is this. */
   #fxParticles{
     position:fixed; inset:0;
     width:100%; height:100%;
@@ -562,8 +563,8 @@
      and non-interactive. -->
 <canvas id="bgFx" aria-hidden="true"></canvas>
 
-<!-- The add-vault particle field. Shown only while the create-vault view is
-     open, where it replaces the mesh rather than layering over it. -->
+<!-- The lock screen's particle field. Shown only while the lock screen is up,
+     where it replaces the mesh rather than layering over it. -->
 <canvas id="fxParticles" aria-hidden="true"></canvas>
 
 <!-- ===================== LOCK SCREEN ===================== -->
@@ -795,9 +796,9 @@
   // ---------------- Lock screen flow ----------------
   let pendingOpenFileText = null;
 
-  $("btnNewVault").onclick = () => { $("chooserView").style.display="none"; $("createView").style.display="block"; startCreateFx(); };
+  $("btnNewVault").onclick = () => { $("chooserView").style.display="none"; $("createView").style.display="block"; };
   $("btnOpenVault").onclick = () => { $("chooserView").style.display="none"; $("openView").style.display="block"; };
-  $("btnBackFromCreate").onclick = () => { $("createView").style.display="none"; $("chooserView").style.display="block"; $("createError").textContent=""; stopCreateFx(); };
+  $("btnBackFromCreate").onclick = () => { $("createView").style.display="none"; $("chooserView").style.display="block"; $("createError").textContent=""; };
   $("btnBackFromOpen").onclick = () => { $("openView").style.display="none"; $("chooserView").style.display="block"; $("openError").textContent=""; };
 
   $("filePickArea").onclick = () => $("fileInput").click();
@@ -844,7 +845,7 @@
   };
 
   function enterApp(){
-    stopCreateFx();
+    stopLockFx();
     document.getElementById("lockScreen").style.display = "none";
     document.getElementById("app").style.display = "block";
     activeCategoryId = vault.categories[0] ? vault.categories[0].id : null;
@@ -896,7 +897,6 @@
   };
 
   $("btnLock").onclick = () => {
-    stopCreateFx();
     if(isDirty && !confirm("You have unsaved changes. Lock anyway and lose them?")) return;
     vault = null;
     derivedKeyCache = null;
@@ -919,6 +919,7 @@
     $("chooserView").style.display = "block";
     $("createView").style.display = "none";
     $("openView").style.display = "none";
+    startLockFx();
     $("newPw").value = ""; $("newPw2").value = ""; $("vaultName").value = "My Records";
     $("openPw").value = ""; $("filePickArea").textContent = "Click to choose your .vault file";
     $("filePickArea").classList.remove("has-file");
@@ -1326,7 +1327,7 @@
   }
   initVersion();
 
-  // ---------------- Add-vault page: Spipa particle field ----------------
+  // ---------------- Lock screen: Spipa particle field ----------------
   // Adapted from "Spipa circle" by Alex Andrix
   // (codepen.io/alexandrix/pen/oQOvYp). Each particle is spring-coupled to an
   // attractor spot on a coarse grid; the attractor wanders toward whichever
@@ -1340,19 +1341,20 @@
   //     the original's `hue + stepCount/30` does. On a dark vault an unbounded
   //     rotation turns into a rainbow that belongs to nothing. HUES and HUE_SWING
   //     are the only lines to touch for that.
-  //   - it runs only while the create-vault view is open, and takes the place of
-  //     the mesh there instead of sitting on top of it.
-  let createFx = null;
+  //   - it runs only while the lock screen is up, and takes the place of the mesh
+  //     there instead of sitting on top of it. So: particle field outside the
+  //     vault, mesh once you are in it.
+  let lockFx = null;
 
-  function startCreateFx(){
-    if(!createFx) createFx = buildCreateFx();
-    if(createFx) createFx.start();
+  function startLockFx(){
+    if(!lockFx) lockFx = buildLockFx();
+    if(lockFx) lockFx.start();
   }
-  function stopCreateFx(){
-    if(createFx) createFx.stop();
+  function stopLockFx(){
+    if(lockFx) lockFx.stop();
   }
 
-  function buildCreateFx(){
+  function buildLockFx(){
     const canvas = document.getElementById("fxParticles");
     if(!canvas || !canvas.getContext) return null;
     const ctx = canvas.getContext("2d");
@@ -1385,7 +1387,7 @@
     const CHAOS = 30;      // randomness in choosing which way to drift
     const K = 8, VISC = 0.4, STEP = 0.1;
     const ZOOM = 2.2;      // the original uses 1.6, but at that scale the whole
-                           // field hides behind the create card
+                           // field hides behind the cover card
     const HUES = [38, 196, 258, 330, 218];          // gold, cyan, violet, rose, blue
     const HUE_SWING = 14;    // degrees of breath either side of a particle's own
                              // hue — bounded on purpose, see the note above
@@ -1721,6 +1723,10 @@
 
     raf = requestAnimationFrame(frame);
   })();
+
+  // The lock screen opens on the chooser, so the particle field starts with it
+  // and simply stays up for every view until the vault is actually entered.
+  startLockFx();
 
 })();
 </script>

@@ -53,14 +53,19 @@ moving backdrop behind something you are typing into or reading costs more than
 it adds — and it holds still entirely under `prefers-reduced-motion`. If the
 canvas cannot be created at all, a static gradient stands in.
 
-The **create-vault** screen has its own backdrop instead: a particle field adapted
+The **lock screen** has its own backdrop instead: a particle field adapted
 from [Spipa circle](https://codepen.io/alexandrix/pen/oQOvYp) by Alex Andrix.
 Each particle is spring-coupled to an attractor spot on a coarse grid; the
 attractor wanders toward whichever neighbouring spot has the highest radial field
 value, particles die when they get stuck or grow too old, and a fading fill draws
-the trails. It takes the place of the mesh on that screen rather than layering
-over it — two animated backdrops stacked would be muddy, and only one is ever
-drawn. Two changes from the original: the palette is the app's own, with each
+the trails. It runs across the whole lock screen — the chooser, the create-vault
+form and the open-an-existing-vault form all share it — and stops when you enter
+a vault, handing the screen over to the mesh. It takes the place of the mesh
+there rather than layering over it: two animated backdrops stacked would be
+muddy, and only one is ever drawn. Locking again brings the field back, carrying
+on from where it left off rather than restarting.
+
+Two changes from the original: the palette is the app's own, with each
 particle's hue breathing ±14° around its base instead of sweeping the whole
 colour wheel; and the field is drawn at ~55% scale and stretched, so the trails
 stay soft and a frame costs a fraction of full size.
