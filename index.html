@@ -1104,7 +1104,7 @@
     rows.innerHTML = "";
     const fields = entry ? entry.fields.slice() : defaultFieldsFor(activeCategoryId);
     if(fields.length === 0) fields.push({k:"",v:""});
-    fields.forEach(f => addFieldRow(f.k, f.v));
+    fields.forEach(f => addFieldRow(f.k, f.v, f.t));
     // copy, so cancelling the modal discards staged additions and removals
     pendingImages = entry && entry.images ? entry.images.map(i => Object.assign({}, i)) : [];
     renderImageList();
@@ -1160,17 +1160,27 @@
       return [{k:"VIN", v:""},{k:"License plate", v:""},{k:"Insurance policy #", v:""}];
     }
     if(cat && cat.id === "ids"){
-      return [{k:"Document number", v:""},{k:"Issued", v:""},{k:"Expires", v:""}];
+      return [{k:"Document number", v:""},{k:"Issued", v:"", t:"date"},{k:"Expires", v:"", t:"date"}];
     }
     return [{k:"", v:""}];
   }
 
-  function addFieldRow(k, v){
+  // Date fields are detected by explicit t:"date" or by common date-like names.
+  // This ensures existing vaults with "Issued"/"Expires" fields also get date inputs.
+  function isDateField(f){
+    if(f.t === "date") return true;
+    const dateNames = ["issued","expires","expiry","date","dob","birth","birthday","start","end","renewal","valid until","valid thru","valid through"];
+    return dateNames.includes(f.k.toLowerCase().trim());
+  }
+
+  function addFieldRow(k, v, t){
     const row = document.createElement("div");
     row.className = "rowfield";
+    const isDate = t === "date" || (t === undefined && isDateField({k:k}));
+    const inputType = isDate ? "date" : "text";
     row.innerHTML =
       '<input type="text" class="klabel" placeholder="Field (e.g. VIN)" value="'+escapeHtml(k||"")+'">' +
-      '<input type="text" class="vval" placeholder="Value" value="'+escapeHtml(v||"")+'">' +
+      '<input type="'+inputType+'" class="vval" placeholder="Value" value="'+escapeHtml(v||"")+'">' +
       '<button type="button" title="Remove field">&times;</button>';
     row.querySelector("button").onclick = () => row.remove();
     $("fieldRows").appendChild(row);
@@ -1186,7 +1196,11 @@
     $("fieldRows").querySelectorAll(".rowfield").forEach(row => {
       const k = row.querySelector(".klabel").value.trim();
       const v = row.querySelector(".vval").value.trim();
-      if(k || v) fields.push({k, v});
+      if(k || v){
+        const f = {k, v};
+        if(isDateField({k:k, t: row.querySelector(".vval").type === "date" ? "date" : undefined})) f.t = "date";
+        fields.push(f);
+      }
     });
     const notes = $("entryNotes").value.trim();
     const images = pendingImages.map(i => Object.assign({}, i));
