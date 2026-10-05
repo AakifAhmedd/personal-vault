@@ -5,61 +5,65 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Registry — Your Numbers Vault</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#1B2A3D;
-    /* darkened from #5B6B7C: the original sat at 4.23:1 on the paper base,
-       which fails WCAG AA for the small text it is used on */
-    --ink-soft:#4A5768;
-    --paper:#EAE2CC;
-    --paper-deep:#DED2B0;
-    --card:#F7F2E4;
-    --brass:#A87C2C;
-    --rust:#9C3B2E;
-    --line: rgba(27,42,61,0.16);
-    /* darkened from #8A6520, which measured 4.10:1 on paper and failed AA on
-       the small tab-count text */
-    --brass-deep:#6F4E14;
+    /* ---- Vault Glass ------------------------------------------------
+       A private numbers vault should read as secure and quiet, not as a
+       decorative ledger. Deep midnight base, frosted glass surfaces, a single
+       gold accent for the registry identity, coral for anything destructive.
+       Surface opacities sit a little above RACK's 52%: this app is text-dense
+       (mono field values at 14.5px), so the glass stays legible while the
+       colour blooms still read through it. */
+    --ink:#E8EEF9;          /* primary text on the dark base */
+    --ink-soft:#95A3BE;     /* secondary text; ~5.1:1 on --paper, passes AA */
+    --paper:#0A0E17;        /* page base */
+    --paper-deep:#060A11;   /* deepest wells (thumbnails) */
+    --card:#121B2C;         /* glass tint base */
+    --brass:#E4B04A;        /* vault gold */
+    --brass-deep:#C79238;
+    --rust:#F0564A;         /* destructive */
+    --line: rgba(232,238,249,0.10);
 
-    /* ---- glass surface tokens (ported from RACK's data-style="glass") ----
-       Opacities are a little higher than RACK's 52%: this app is text-dense
-       (mono field values at 14.5px), so the surfaces stay legible while the
-       gradient still reads through them. */
-    --glass-bg: color-mix(in srgb, var(--card) 72%, transparent);
-    --glass-strong: color-mix(in srgb, var(--card) 88%, transparent);
-    --glass-border: color-mix(in srgb, var(--card) 78%, transparent);
+    /* ---- glass surface tokens (ported from RACK's data-style="glass") ---- */
+    --glass-bg: color-mix(in srgb, var(--card) 62%, transparent);
+    --glass-strong: color-mix(in srgb, var(--card) 90%, transparent);
+    --glass-border: rgba(232,238,249,0.12);
     --glass-shadow:
-      0 8px 28px rgba(27,42,61,0.16),
-      inset 0 1px 0 rgba(255,255,255,0.55);
+      0 12px 34px rgba(0,0,0,0.45),
+      inset 0 1px 0 rgba(255,255,255,0.06);
     --glass-blur: blur(16px) saturate(150%);
+    --radius-s:10px;
+    --radius-m:16px;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    /* glass needs colour behind it to refract: brass/rust/ink blooms over the
-       paper, still carrying the ledger dot-grid on top.
-       The paper base is background-color, NOT a final background-image layer:
-       a trailing colour layer invalidates the whole shorthand in Chrome and
-       the gradients disappear with it. */
-    background-color: var(--paper);
+    /* glass needs colour behind it to refract: gold, cyan and violet blooms
+       over the midnight base, with the ledger dot-grid on top.
+       The base is background-color, NOT a final background-image layer: a
+       trailing colour layer invalidates the shorthand in Chrome and the
+       gradients disappear with it. */
+    background-color:var(--paper);
     background-image:
-      radial-gradient(60vmax 60vmax at 10% 6%, rgba(168,124,44,0.34), transparent 62%),
-      radial-gradient(55vmax 55vmax at 92% 18%, rgba(156,59,46,0.24), transparent 62%),
-      radial-gradient(60vmax 60vmax at 70% 96%, rgba(27,42,61,0.20), transparent 62%),
-      radial-gradient(circle at 1px 1px, rgba(27,42,61,0.05) 1px, transparent 0);
+      radial-gradient(60vmax 60vmax at 12% 6%, rgba(228,176,74,0.15), transparent 60%),
+      radial-gradient(55vmax 55vmax at 88% 16%, rgba(56,189,248,0.13), transparent 60%),
+      radial-gradient(62vmax 62vmax at 68% 96%, rgba(124,92,255,0.16), transparent 62%),
+      radial-gradient(circle at 1px 1px, rgba(232,238,249,0.035) 1px, transparent 0);
     background-size: auto, auto, auto, 22px 22px;
     background-attachment: fixed;
     color:var(--ink);
-    font-family:'Source Serif 4', Georgia, serif;
+    font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size:15px;
+    line-height:1.55;
     min-height:100vh;
     -webkit-font-smoothing:antialiased;
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
-  h1,h2,h3,.display{font-family:'Fraunces', serif;}
+  h1,h2,h3,.display{font-family:'Fraunces', serif; letter-spacing:-0.01em;}
   button{font-family:inherit; cursor:pointer;}
   input, textarea, select{font-family:inherit;}
-  ::selection{background:var(--brass); color:var(--card);}
+  ::selection{background:var(--brass); color:var(--paper);}
 
   /* ---------- Lock screen ---------- */
   #lockScreen{
@@ -71,13 +75,13 @@
   }
   .cover{
     width:100%;
-    max-width:420px;
+    max-width:430px;
     background:var(--glass-strong);
     border:1px solid var(--glass-border);
-    border-radius:4px;
-    padding:40px 36px 32px;
+    border-radius:var(--radius-m);
+    padding:42px 38px 34px;
     position:relative;
-    box-shadow: var(--glass-shadow), 0 20px 40px -20px rgba(27,42,61,0.35);
+    box-shadow: var(--glass-shadow), 0 30px 60px -24px rgba(0,0,0,0.75);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
   }
@@ -87,28 +91,29 @@
     width:14px; height:14px;
     border:2px solid var(--brass);
   }
-  .cover::before{ top:10px; left:10px; border-right:none; border-bottom:none; }
-  .cover::after{ bottom:10px; right:10px; border-left:none; border-top:none; }
+  .cover::before{ top:12px; left:12px; border-right:none; border-bottom:none; border-radius:5px 0 0 0; }
+  .cover::after{ bottom:12px; right:12px; border-left:none; border-top:none; border-radius:0 0 5px 0; }
   .seal{
-    width:56px; height:56px;
+    width:58px; height:58px;
     margin:0 auto 18px;
     border:2px solid var(--brass);
     border-radius:50%;
     display:flex; align-items:center; justify-content:center;
+    background: color-mix(in srgb, var(--brass) 10%, transparent);
   }
   .seal svg{width:26px;height:26px;fill:var(--brass);}
   .cover h1{
     text-align:center;
-    font-size:28px;
+    font-size:29px;
     font-weight:600;
-    margin:0 0 4px;
+    margin:0 0 5px;
     letter-spacing:0.01em;
   }
   .cover .sub{
     text-align:center;
     color:var(--ink-soft);
     font-size:14px;
-    margin:0 0 28px;
+    margin:0 0 30px;
     letter-spacing:0.02em;
   }
   .field{ margin-bottom:16px; }
@@ -118,46 +123,49 @@
     text-transform:uppercase;
     letter-spacing:0.08em;
     color:var(--ink-soft);
-    margin-bottom:6px;
+    margin-bottom:7px;
   }
   .field input{
     width:100%;
-    padding:11px 12px;
+    padding:12px 13px;
     border:1px solid var(--glass-border);
-    border-radius:2px;
+    border-radius:var(--radius-s);
     background: color-mix(in srgb, var(--card) 70%, transparent);
     color:var(--ink);
     font-size:15px;
+    transition:border-color .15s, box-shadow .15s;
   }
-  .field input:focus{ outline:2px solid var(--brass); outline-offset:1px; }
+  .field input::placeholder{ color:color-mix(in srgb, var(--ink-soft) 75%, transparent); }
+  .field input:focus{ outline:none; border-color:var(--brass); box-shadow:0 0 0 3px color-mix(in srgb, var(--brass) 22%, transparent); }
   .btn{
     width:100%;
     padding:12px 16px;
-    border:1px solid var(--ink);
-    background:var(--ink);
+    border:1px solid var(--brass);
+    background:var(--brass);
     color:var(--paper);
-    border-radius:2px;
+    border-radius:var(--radius-s);
     font-size:14px;
-    letter-spacing:0.03em;
+    letter-spacing:0.02em;
     font-weight:600;
-    transition:background .15s, color .15s;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.30);
+    transition:background .15s, border-color .15s, transform .05s;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35);
   }
   .btn:hover{ background:var(--brass-deep); border-color:var(--brass-deep); }
+  .btn:active{ transform:translateY(1px); }
   .btn:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
   .btn-outline{
     background:var(--glass-bg);
     color:var(--ink);
     /* slightly firmer than --glass-border: against the cover card an all-glass
        outline button loses its edge entirely */
-    border:1px solid color-mix(in srgb, var(--ink) 26%, transparent);
+    border:1px solid color-mix(in srgb, var(--ink) 24%, transparent);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
   }
-  .btn-outline:hover{ background:var(--glass-strong); border-color:var(--ink-soft); }
+  .btn-outline:hover{ background:var(--glass-strong); border-color:color-mix(in srgb, var(--ink) 40%, transparent); }
   .btn-danger{ background:var(--rust); border-color:var(--rust); color:#fff; }
-  .btn-danger:hover{ background:#7d2e23; border-color:#7d2e23; }
-  .btn-sm{ width:auto; padding:8px 14px; font-size:13px; }
+  .btn-danger:hover{ background:#d84337; border-color:#d84337; }
+  .btn-sm{ width:auto; padding:8px 15px; font-size:13px; }
 
   .tabbar{
     display:flex;
@@ -179,7 +187,7 @@
   .error{ color:var(--rust); font-size:13px; margin-top:10px; min-height:16px; text-align:center; }
   .filepick{
     border:1px dashed var(--glass-border);
-    border-radius:2px;
+    border-radius:var(--radius-s);
     padding:16px;
     text-align:center;
     font-size:13px;
@@ -189,6 +197,7 @@
     background:var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
+    transition:border-color .15s, color .15s;
   }
   .filepick:hover{ border-color:var(--brass); color:var(--ink); }
   .filepick.has-file{ border-style:solid; border-color:var(--brass); color:var(--ink); }
@@ -196,11 +205,11 @@
   /* ---------- App shell ---------- */
   #app{ display:none; min-height:100vh; }
   .topbar{
-    background: color-mix(in srgb, var(--ink) 72%, transparent);
+    background: color-mix(in srgb, var(--paper) 70%, transparent);
     backdrop-filter: blur(18px) saturate(160%);
     -webkit-backdrop-filter: blur(18px) saturate(160%);
-    border-bottom:1px solid color-mix(in srgb, var(--brass) 60%, transparent);
-    color:var(--paper);
+    border-bottom:1px solid color-mix(in srgb, var(--brass) 55%, transparent);
+    color:var(--ink);
     padding:16px 28px;
     display:flex;
     align-items:center;
@@ -213,20 +222,19 @@
   }
   .brand{ display:flex; align-items:baseline; gap:10px; }
   .brand h1{ font-size:20px; margin:0; font-weight:600; }
-  .brand .tag{ font-size:11px; color:#C9AF7A; letter-spacing:0.1em; text-transform:uppercase; }
+  .brand .tag{ font-size:11px; color:#C9B383; letter-spacing:0.1em; text-transform:uppercase; }
   .topactions{ display:flex; gap:8px; align-items:center; }
   .topactions button{
-    background:transparent; border:1px solid rgba(234,226,204,0.3);
-    color:var(--paper); padding:8px 14px; border-radius:2px; font-size:13px;
+    background:transparent; border:1px solid rgba(232,238,249,0.20);
+    color:var(--ink); padding:8px 14px; border-radius:var(--radius-s); font-size:13px;
+    transition:border-color .15s, color .15s, background .15s;
   }
-  .topactions button:hover{ border-color:var(--brass); color:#fff; }
-  .topactions .save-btn{ background:var(--brass); border-color:var(--brass); color:#1B2A3D; font-weight:600; }
-  .topactions .save-btn:hover{ background:#c1913f; }
+  .topactions button:hover{ border-color:var(--brass); color:#fff; background:rgba(232,238,249,0.04); }
+  .topactions .save-btn{ background:var(--brass); border-color:var(--brass); color:var(--paper); font-weight:600; }
+  .topactions .save-btn:hover{ background:#F0C25E; border-color:#F0C25E; color:var(--paper); }
   .dirty-dot{ width:7px; height:7px; border-radius:50%; background:var(--rust); display:inline-block; margin-right:6px; vertical-align:middle; }
 
   .layout{ max-width:1080px; margin:0 auto; padding:28px; }
-  /* the warning lives inside .layout so it shares the grid's exact width and
-     gutters; only the block spacing is trimmed */
 
   .catrow{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:26px; align-items:center; }
   .cattab{
@@ -235,12 +243,13 @@
     background:var(--glass-bg);
     border:1px solid var(--glass-border);
     border-bottom:none;
-    border-radius:6px 6px 0 0;
+    border-radius:var(--radius-s) var(--radius-s) 0 0;
     font-size:13.5px;
     color:var(--ink-soft);
     transform:translateY(3px);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
+    transition:color .15s, background .15s;
   }
   .cattab.active{
     background:var(--glass-strong);
@@ -252,9 +261,10 @@
   .cattab .count{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--brass-deep); margin-left:6px; }
   .addcat{
     background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft);
-    padding:9px 14px; border-radius:6px; font-size:13px;
+    padding:9px 14px; border-radius:var(--radius-s); font-size:13px;
+    transition:border-color .15s, color .15s;
   }
-  .addcat:hover{ border-color:var(--brass); color:var(--brass-deep); }
+  .addcat:hover{ border-color:var(--brass); color:var(--brass); }
 
   .entrybar{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:14px; }
   .entrybar .catname{ font-size:22px; }
@@ -271,22 +281,17 @@
        collapses the empty tracks so the card fills the available width. */
     grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
     gap:16px;
-    /* stretch, not start: cards in a row share a height so their action rows
-       align. .card uses margin-top:auto on .actions to sit at the bottom. */
   }
   /* flex column so the action row can be pushed to the bottom: cards in a row
-     then share the row height and their Edit/Delete buttons line up, instead of
-     floating mid-card on the shorter ones */
+     then share the row height and their Edit/Delete buttons line up */
   .card{
-    /* translucent but un-blurred, following RACK: many cards per screen stay
-       fast, and the field values stay crisp to read */
     background:var(--glass-bg);
     border:1px solid var(--glass-border);
-    border-radius:4px;
+    border-radius:var(--radius-m);
     padding:20px 20px 16px;
     position:relative;
     box-shadow: var(--glass-shadow);
-    transition:box-shadow .15s, transform .15s;
+    transition:box-shadow .18s, transform .18s, border-color .18s;
     display:flex; flex-direction:column;
     /* auto-fit would otherwise stretch a lone card across the full 1080px
        layout, which looks worse than the empty space did */
@@ -294,9 +299,13 @@
     width:100%;
   }
   .card .actions{ margin-top:auto; }
-  .card:hover{ box-shadow:0 10px 24px -16px rgba(27,42,61,0.4), inset 0 1px 0 rgba(255,255,255,0.55); }
+  .card:hover{
+    box-shadow:0 16px 40px -18px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
+    border-color:color-mix(in srgb, var(--brass) 35%, var(--glass-border));
+    transform:translateY(-2px);
+  }
   .stamp{
-    position:absolute; top:14px; right:14px;
+    position:absolute; top:16px; right:16px;
     width:44px; height:44px;
     border:1.5px solid var(--brass);
     border-radius:50%;
@@ -307,7 +316,7 @@
     color:var(--brass-deep);
     line-height:1.1;
     text-align:center;
-    opacity:0.85;
+    opacity:0.9;
   }
   .card h3{ font-size:17px; margin:0 22px 12px 0; padding-right:40px; }
   .kv{ margin-bottom:8px; }
@@ -336,9 +345,7 @@
   }
 
   /* A blurred value is otherwise indistinguishable from a failed load or a
-     rendering bug. This pip marks that there IS a value here, hidden. The
-     entry-bar hint carries the "hover to read" instruction, so the pip stays
-     minimal and does not repeat it on every row. */
+     rendering bug. This pip marks that there IS a value here, hidden. */
   .kv{ position:relative; }
   .card:hover .kv .pip,
   .card:focus-within .kv .pip,
@@ -353,7 +360,7 @@
   /* images */
   .thumbs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
   .thumb{
-    width:72px; height:72px; border-radius:3px; overflow:hidden; cursor:zoom-in;
+    width:72px; height:72px; border-radius:var(--radius-s); overflow:hidden; cursor:zoom-in;
     border:1px solid var(--glass-border); background:var(--paper-deep);
     flex:0 0 auto;
     position:relative;
@@ -369,7 +376,7 @@
   body.reveal-all .thumb img{ filter:none; }
   .thumb::after{
     content:""; position:absolute; inset:0;
-    background:rgba(27,42,61,0.06); border-radius:3px; pointer-events:none;
+    background:rgba(0,0,0,0.28); border-radius:var(--radius-s); pointer-events:none;
     transition:background .16s ease;
   }
   .card:hover .thumb::after,
@@ -387,18 +394,16 @@
   .imgrow:last-child{ border-bottom:none; }
   .imgrow .name{ flex:1; font-size:13px; word-break:break-all; }
   .imgrow .dims{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); }
-  .imgrow button{ background:none; border:1px solid var(--glass-border); border-radius:2px;
+  .imgrow button{ background:none; border:1px solid var(--glass-border); border-radius:var(--radius-s);
     padding:5px 10px; font-size:12px; color:var(--rust); flex:0 0 auto; }
   .imgrow button:hover{ border-color:var(--rust); }
 
   /* Category delete. Deliberately NOT a bare x inside the tab button: it sits
      within the tab's own click target, so a stray click while switching
-     categories would destroy a category and every record in it. It is now a
-     separate, clearly separated control that only appears on hover/focus, and
-     activating it never also switches tabs. */
+     categories would destroy a category and every record in it. */
   .catdel{
     background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft);
-    font-size:11.5px; padding:9px 13px; border-radius:6px; margin-left:4px;
+    font-size:11.5px; padding:9px 13px; border-radius:var(--radius-s); margin-left:4px;
     opacity:0; transition:opacity .15s, border-color .15s, color .15s;
     white-space:nowrap;
   }
@@ -407,15 +412,14 @@
   .catdel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; opacity:1; }
 
   .card .notes{ font-size:12.5px; color:var(--ink-soft); margin-top:10px; padding-top:10px; border-top:1px solid var(--glass-border); font-style:italic; }
-  /* margin-top:auto is set with .card above; a fixed value here would override
-     it and leave action rows floating mid-card on shorter cards */
   .card .actions{ display:flex; gap:8px; padding-top:14px; }
   .card .actions button{
-    flex:1; font-size:12px; padding:7px; border-radius:2px;
+    flex:1; font-size:12px; padding:7px; border-radius:var(--radius-s);
     border:1px solid var(--glass-border); background:var(--glass-bg);
     color:var(--ink);
+    transition:border-color .15s, background .15s;
   }
-  .card .actions button:hover{ border-color:var(--brass); }
+  .card .actions button:hover{ border-color:var(--brass); background:var(--glass-strong); }
   /* Destructive, so it is tinted at rest rather than only on hover — but far
      too quietly to be mistaken for the safe "Edit" beside it. */
   .card .actions .del{ color:var(--rust); border-color:color-mix(in srgb, var(--rust) 34%, transparent); }
@@ -423,7 +427,7 @@
 
   .empty{
     text-align:center; padding:60px 20px; color:var(--ink-soft);
-    border:1px dashed var(--glass-border); border-radius:4px;
+    border:1px dashed var(--glass-border); border-radius:var(--radius-m);
     background:var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -433,47 +437,48 @@
   /* modal */
   .overlay{
     display:none; position:fixed; inset:0;
-    background:rgba(27,42,61,0.42);
+    background:rgba(4,6,11,0.62);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     align-items:center; justify-content:center; padding:20px; z-index:50;
   }
   .modal{
-    background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:4px;
+    background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:var(--radius-m);
     width:100%; max-width:520px;
     max-height:88vh; overflow-y:auto; padding:28px;
-    box-shadow: var(--glass-shadow), 0 30px 60px -20px rgba(0,0,0,0.4);
+    box-shadow: var(--glass-shadow), 0 30px 60px -20px rgba(0,0,0,0.7);
     backdrop-filter: blur(24px) saturate(150%);
     -webkit-backdrop-filter: blur(24px) saturate(150%);
   }
   .modal h2{ font-size:20px; margin:0 0 20px; }
   .rowfield{ display:flex; gap:8px; margin-bottom:10px; }
-  .rowfield input{ flex:1; padding:9px 10px; border:1px solid var(--glass-border); border-radius:2px;
-    background: color-mix(in srgb, var(--card) 70%, transparent); font-size:14px; }
+  .rowfield input{ flex:1; padding:9px 10px; border:1px solid var(--glass-border); border-radius:var(--radius-s);
+    background: color-mix(in srgb, var(--card) 70%, transparent); color:var(--ink); font-size:14px; }
+  .rowfield input::placeholder{ color:color-mix(in srgb, var(--ink-soft) 75%, transparent); }
+  .rowfield input:focus{ outline:none; border-color:var(--brass); box-shadow:0 0 0 3px color-mix(in srgb, var(--brass) 20%, transparent); }
   .rowfield input.klabel{ flex:0 0 40%; }
-  .rowfield button{ background:none; border:1px solid var(--glass-border); border-radius:2px; padding:0 12px; color:var(--rust); }
-  .addfield{ background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft); padding:8px 14px; border-radius:2px; font-size:13px; margin:4px 0 18px; }
-  .addfield:hover{ border-color:var(--brass); color:var(--brass-deep); }
-  .modal textarea{ width:100%; padding:10px 12px; border:1px solid var(--glass-border); border-radius:2px;
-    background: color-mix(in srgb, var(--card) 70%, transparent); font-size:14px; min-height:70px; resize:vertical; }
+  .rowfield button{ background:none; border:1px solid var(--glass-border); border-radius:var(--radius-s); padding:0 12px; color:var(--rust); }
+  .rowfield button:hover{ border-color:var(--rust); }
+  .addfield{ background:none; border:1px dashed var(--ink-soft); color:var(--ink-soft); padding:8px 14px; border-radius:var(--radius-s); font-size:13px; margin:4px 0 18px; transition:border-color .15s, color .15s; }
+  .addfield:hover{ border-color:var(--brass); color:var(--brass); }
+  .modal textarea{ width:100%; padding:10px 12px; border:1px solid var(--glass-border); border-radius:var(--radius-s);
+    background: color-mix(in srgb, var(--card) 70%, transparent); color:var(--ink); font-size:14px; min-height:70px; resize:vertical; }
+  .modal textarea:focus{ outline:none; border-color:var(--brass); box-shadow:0 0 0 3px color-mix(in srgb, var(--brass) 20%, transparent); }
   .modalfoot{ display:flex; gap:10px; margin-top:22px; }
   .modalfoot .btn{ width:auto; flex:1; }
 
-  /* Was ink-soft at 12px, which measured 1.35:1 against the page background —
-   effectively invisible, and it carries the no-recovery warning. Now a bordered
-   notice at full ink contrast. */
+  /* Carries the no-recovery warning, so it stays at full ink contrast on a
+     bordered notice rather than a faint line. */
   footer.note{
-    /* lives inside .layout, so it inherits the grid's width and gutters exactly;
-       only the block spacing is trimmed */
     display:flex; align-items:flex-start; gap:9px;
     text-align:left; color:var(--ink); font-size:12.5px; line-height:1.55;
     padding:12px 16px; margin:22px 0 12px;
     border:1px solid var(--glass-border); border-left:3px solid var(--brass);
-    border-radius:3px; background:var(--glass-bg);
+    border-radius:var(--radius-s); background:var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
   }
-  footer.note svg{ width:15px; height:15px; flex:0 0 auto; margin-top:2px; fill:var(--brass-deep); }
+  footer.note svg{ width:15px; height:15px; flex:0 0 auto; margin-top:2px; fill:var(--brass); }
 
   @media (max-width:600px){
     .topbar{ padding:14px 16px; }
@@ -493,6 +498,7 @@
       backdrop-filter: none; -webkit-backdrop-filter: none;
     }
   }
+
 </style>
 </head>
 <body>

@@ -27,11 +27,16 @@ the same HTML served over HTTPS, which is what Web Crypto requires.
 
 ## Interface
 
-Surfaces are frosted glass over a warm brass/rust/ink gradient on the paper base
-— blurred on the few large surfaces (cover, top bar, modals, category tabs) and
+A dark **vault glass** theme: a deep midnight base with soft gold, cyan and
+violet blooms behind it, and frosted glass surfaces on top — blurred on the few
+large surfaces (cover, top bar, modals, category tabs) and
 translucent-but-unblurred on entry cards, so long lists stay fast and the mono
-field values stay crisp. Where `backdrop-filter` is unavailable, surfaces fall
-back to opaque via `@supports`.
+field values stay crisp. A single gold accent carries the registry identity;
+coral marks anything destructive. Where `backdrop-filter` is unavailable,
+surfaces fall back to opaque via `@supports`. The palette is deliberately cool
+and low-key — a private numbers vault should read as secure and discreet, not
+decorative. The glass surface treatment is shared with the RACK project, so the
+two apps feel like a family.
 
 ## Using it
 
@@ -44,7 +49,10 @@ back to opaque via `@supports`.
 3. **Add a record** — a title plus any number of custom fields. Fields are
    key/value pairs, so the same record type can hold anything. The two built-in
    categories pre-fill sensible fields (VIN, licence plate, insurance policy for
-   vehicles; document number, issued, expires for IDs).
+   vehicles; document number, issued, expires for IDs). A field that holds a
+   date — *Issued*, *Expires*, or any field named like a date (dob, start, end,
+   renewal, valid until …) — renders a native date picker rather than a free-text
+   box, so the value is always stored in one predictable format.
 4. **Attach photos** — in the record modal, add images of the document itself.
    See [Images](#images) below for what happens to them.
 5. **Save vault file** — writes an encrypted `.vault` file. If your browser
@@ -138,9 +146,17 @@ that choice:
 - Blur is presentation only. It does not encrypt anything on its own and can be
   bypassed from developer tools while the vault is unlocked.
 
+## Versioning
+
+The current version lives in `VERSION` at the repo root and follows
+`MAJOR.MINOR.PATCH`. Every commit on `main` bumps it, in the same commit as the
+change. The full rules are in [`VERSIONING.md`](VERSIONING.md).
+
 ## Files
 
 - `index.html` — the entire application: markup, styles, and logic in one file.
+- `VERSION` — the current version; the single source of truth.
+- `VERSIONING.md` — when and how the version is bumped.
 
 ## Browser support
 
