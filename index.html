@@ -1384,6 +1384,15 @@
     }
 
     function draw(now, follow){
+      // Clear first, or the nodes accumulate frame over frame. 'lighter' adds,
+      // and nothing ever takes it away, so without this the canvas saturates to
+      // fully opaque within a second or two and washes the whole page out to
+      // white — the mesh stops being light on a dark page and becomes a white
+      // sheet the content sits on. clearRect ignores the composite mode, but it
+      // is set to source-over below anyway so the order is unambiguous.
+      ctx.globalCompositeOperation = "source-over";
+      ctx.clearRect(0, 0, W, H);
+
       // additive light onto a transparent canvas, so the page background and
       // its dot-grid read through the mesh instead of being painted over
       ctx.globalCompositeOperation = "lighter";
