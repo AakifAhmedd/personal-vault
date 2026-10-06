@@ -357,7 +357,14 @@
   .card:hover{
     box-shadow:0 16px 40px -18px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
     border-color:color-mix(in srgb, var(--brass) 35%, var(--glass-border));
-    transform:translateY(-2px);
+  }
+  .card:focus-visible{
+    outline:2px solid var(--brass);
+    outline-offset:2px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.06), 0 16px 40px -18px rgba(0,0,0,0.7);
+  }
+  @media (hover: hover) and (pointer: fine){
+    .card:hover{ transform:translateY(-2px); }
   }
   .stamp{
     position:absolute; top:16px; right:16px;
@@ -397,6 +404,9 @@
   }
   @media (prefers-reduced-motion: reduce){
     .kv .v{ transition:none; }
+    .card{ transition:none; }
+    .card:hover{ transform:none; }
+    .card:focus-visible{ outline:none; outline-offset:2px; }
   }
 
   /* A blurred value is otherwise indistinguishable from a failed load or a
