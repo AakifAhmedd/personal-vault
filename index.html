@@ -472,7 +472,12 @@
     opacity:0; transition:opacity .15s, border-color .15s, color .15s;
     white-space:nowrap;
   }
-  .catrow:hover .catdel, .catdel:focus-visible{ opacity:1; }
+  .catrow:hover .catdel{
+    opacity:1;
+    color:var(--rust);
+    border-color:color-mix(in srgb, var(--rust) 34%, transparent);
+    border-style:solid;
+  }
   .catdel:hover{ border-color:var(--rust); color:var(--rust); border-style:solid; }
   .catdel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; opacity:1; }
 
